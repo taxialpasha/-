@@ -1,552 +1,456 @@
 /**
- * نظام الاستثمار المتكامل - إدارة العمليات
- * يتحكم في وظائف صفحة العمليات، بما في ذلك عرض العمليات وإضافة عمليات جديدة (إيداع/سحب)
+ * نظام الاستثمار المتكامل - مدير العمليات
+ * يتعامل مع إدارة عمليات الإيداع والسحب وعرضها في واجهة المستخدم
  */
 
 class TransactionsManager {
     constructor() {
-        // عناصر واجهة المستخدم
-        this.transactionsTable = document.getElementById('transactions-table').querySelector('tbody');
-        this.addDepositBtn = document.getElementById('add-deposit-btn');
-        this.addWithdrawBtn = document.getElementById('add-withdraw-btn');
-        this.depositModal = document.getElementById('add-deposit-modal');
-        this.withdrawModal = document.getElementById('add-withdraw-modal');
-        this.saveDepositBtn = document.getElementById('save-deposit-btn');
-        this.saveWithdrawBtn = document.getElementById('save-withdraw-btn');
-        this.depositInvestorSelect = document.getElementById('deposit-investor');
-        this.withdrawInvestorSelect = document.getElementById('withdraw-investor');
-        this.withdrawBalanceInfo = document.getElementById('withdraw-balance-info');
-        
-        // البيانات
-        this.transactions = [];
-        this.investors = [];
-        this.filterType = 'all'; // all, deposit, withdraw, profit
-        
-        // تهيئة صفحة العمليات
+        // تهيئة المدير
         this.initialize();
     }
     
-    // تهيئة صفحة العمليات
-    async initialize() {
-        // تحميل البيانات
-        await this.loadData();
+    // تهيئة المدير
+    initialize() {
+        // ربط نماذج العمليات
+        this.bindForms();
+        
+        // إضافة مستمعي الأحداث
+        this.setupEventListeners();
         
         // عرض جدول العمليات
         this.renderTransactionsTable();
         
-        // تحديث قوائم المستثمرين في النماذج
-        this.updateInvestorsSelects();
+        // عرض آخر العمليات في لوحة التحكم
+        this.renderRecentTransactions();
         
-        // إعداد المستمعين للأحداث
-        this.setupEventListeners();
+        console.log('تم تهيئة مدير العمليات');
     }
     
-    // تحميل البيانات
-    async loadData() {
-        this.transactions = db.getAllTransactions();
-        this.investors = db.getAllInvestors();
+    // ربط نماذج العمليات
+    bindForms() {
+        // نموذج الإيداع
+        this.depositForm = document.getElementById('add-deposit-form');
+        this.depositInvestorSelect = document.getElementById('deposit-investor');
+        this.depositAmountInput = document.getElementById('deposit-amount');
+        this.depositDateInput = document.getElementById('deposit-date');
+        this.depositNotesInput = document.getElementById('deposit-notes');
+        this.saveDepositBtn = document.getElementById('save-deposit-btn');
+        
+        // نموذج السحب
+        this.withdrawForm = document.getElementById('add-withdraw-form');
+        this.withdrawInvestorSelect = document.getElementById('withdraw-investor');
+        this.withdrawAmountInput = document.getElementById('withdraw-amount');
+        this.withdrawDateInput = document.getElementById('withdraw-date');
+        this.withdrawNotesInput = document.getElementById('withdraw-notes');
+        this.withdrawBalanceInfo = document.getElementById('withdraw-balance-info');
+        this.saveWithdrawBtn = document.getElementById('save-withdraw-btn');
     }
     
-    // عرض جدول العمليات
-    renderTransactionsTable() {
-        // تصفية العمليات حسب النوع المحدد
-        let filteredTransactions = [...this.transactions];
-        
-        if (this.filterType !== 'all') {
-            filteredTransactions = filteredTransactions.filter(trx => {
-                return trx.type.toLowerCase() === this.filterType.toLowerCase();
-            });
-        }
-        
-        // ترتيب العمليات حسب التاريخ (الأحدث أولاً)
-        filteredTransactions.sort((a, b) => {
-            return new Date(b.createdAt) - new Date(a.createdAt);
-        });
-        
-        // إفراغ الجدول
-        this.transactionsTable.innerHTML = '';
-        
-        // إضافة صفوف العمليات
-        filteredTransactions.forEach(transaction => {
-            // الحصول على معلومات المستثمر
-            const investor = this.investors.find(inv => inv.id === transaction.investorId) || { name: 'غير معروف' };
-            
-            // تحديد لون ونوع العملية
-            let typeClass = '';
-            switch (transaction.type) {
-                case TRANSACTION_TYPES.DEPOSIT:
-                    typeClass = 'success';
-                    break;
-                case TRANSACTION_TYPES.WITHDRAW:
-                    typeClass = 'danger';
-                    break;
-                case TRANSACTION_TYPES.PROFIT:
-                    typeClass = 'primary';
-                    break;
-            }
-            
-            // إنشاء الصف
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${transaction.id}</td>
-                <td>
-                    <div class="investor-info">
-                        <div class="investor-avatar">${investor.name.charAt(0)}</div>
-                        <div>
-                            <div class="investor-name">${investor.name}</div>
-                            <div class="investor-id">${investor.id}</div>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <div class="transaction-type">
-                        <div class="transaction-type-icon ${typeClass.toLowerCase()}">${transaction.type === TRANSACTION_TYPES.DEPOSIT ? '↑' : (transaction.type === TRANSACTION_TYPES.WITHDRAW ? '↓' : '↔')}</div>
-                        <span>${transaction.type}</span>
-                    </div>
-                </td>
-                <td>${formatDate(transaction.date || transaction.createdAt)}</td>
-                <td class="transaction-amount ${transaction.type === TRANSACTION_TYPES.DEPOSIT || transaction.type === TRANSACTION_TYPES.PROFIT ? 'positive' : 'negative'}">
-                    ${transaction.type === TRANSACTION_TYPES.WITHDRAW ? '-' : '+'} ${formatCurrency(transaction.amount)} ${SYSTEM_CONFIG.currency}
-                </td>
-                <td>${transaction.balanceAfter ? formatCurrency(transaction.balanceAfter) + ' ' + SYSTEM_CONFIG.currency : '-'}</td>
-                <td>
-                    <div class="investor-actions">
-                        <button class="investor-action-btn view-transaction" data-id="${transaction.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${transaction.notes ? `
-                            <button class="investor-action-btn info view-notes" data-notes="${transaction.notes}">
-                                <i class="fas fa-info"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                </td>
-            `;
-            
-            this.transactionsTable.appendChild(row);
-        });
-        
-        // إذا لم تكن هناك عمليات، نظهر رسالة
-        if (filteredTransactions.length === 0) {
-            const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = `
-                <td colspan="7" class="text-center">لا توجد عمليات</td>
-            `;
-            this.transactionsTable.appendChild(emptyRow);
-        }
-    }
-    
-    // تحديث قوائم المستثمرين في النماذج
-    updateInvestorsSelects() {
-        // تصفية المستثمرين النشطين فقط
-        const activeInvestors = this.investors.filter(investor => investor.status === INVESTOR_STATUS.ACTIVE);
-        
-        // ترتيب المستثمرين حسب الاسم
-        activeInvestors.sort((a, b) => a.name.localeCompare(b.name));
-        
-        // إفراغ القوائم
-        this.depositInvestorSelect.innerHTML = '<option value="">اختر المستثمر</option>';
-        this.withdrawInvestorSelect.innerHTML = '<option value="">اختر المستثمر</option>';
-        
-        // إضافة المستثمرين إلى القوائم
-        activeInvestors.forEach(investor => {
-            // قائمة الإيداع
-            const depositOption = document.createElement('option');
-            depositOption.value = investor.id;
-            depositOption.textContent = `${investor.name} (${investor.phone})`;
-            this.depositInvestorSelect.appendChild(depositOption);
-            
-            // قائمة السحب
-            const withdrawOption = document.createElement('option');
-            withdrawOption.value = investor.id;
-            withdrawOption.textContent = `${investor.name} (${investor.phone})`;
-            this.withdrawInvestorSelect.appendChild(withdrawOption);
-        });
-    }
-    
-    // إعداد المستمعين للأحداث
+    // إضافة مستمعي الأحداث
     setupEventListeners() {
-        // الاستماع لتغيير الصفحة
-        document.addEventListener('page:change', (e) => {
-            if (e.detail.page === 'transactions') {
-                this.refresh();
-            }
+        // إضافة مستمعي الأحداث لأزرار الإيداع والسحب
+        if (this.saveDepositBtn) {
+            this.saveDepositBtn.addEventListener('click', () => this.addDeposit());
+        }
+        
+        if (this.saveWithdrawBtn) {
+            this.saveWithdrawBtn.addEventListener('click', () => this.withdrawAmount());
+        }
+        
+        // مستمع لتغيير اختيار المستثمر في نموذج السحب
+        if (this.withdrawInvestorSelect) {
+            this.withdrawInvestorSelect.addEventListener('change', () => this.showInvestorBalance());
+        }
+        
+        // مستمع حدث تحديث البيانات
+        document.addEventListener('data:updated', () => {
+            this.renderTransactionsTable();
+            this.renderRecentTransactions();
+            this.populateInvestorSelects();
         });
         
-        // فتح نوافذ الإيداع والسحب
-        this.addDepositBtn.addEventListener('click', () => {
-            this.openDepositModal();
-        });
+        // إضافة مستمعي الأحداث لأزرار فتح النوافذ المنبثقة
+        const addDepositBtn = document.getElementById('add-deposit-btn');
+        const addWithdrawBtn = document.getElementById('add-withdraw-btn');
         
-        this.addWithdrawBtn.addEventListener('click', () => {
-            this.openWithdrawModal();
-        });
+        if (addDepositBtn) {
+            addDepositBtn.addEventListener('click', () => this.openDepositModal());
+        }
         
-        // حفظ عمليات الإيداع والسحب
-        this.saveDepositBtn.addEventListener('click', () => {
-            this.saveDeposit();
-        });
-        
-        this.saveWithdrawBtn.addEventListener('click', () => {
-            this.saveWithdraw();
-        });
-        
-        // إغلاق النوافذ المنبثقة عند النقر على زر الإغلاق
-        document.querySelectorAll('.modal-close, .modal-close-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.modal-overlay').forEach(modal => {
-                    modal.classList.remove('active');
-                });
-            });
-        });
-        
-        // تصفية العمليات حسب النوع
-        document.querySelectorAll('.btn-group button').forEach(button => {
-            button.addEventListener('click', () => {
-                // تحديث الزر النشط
-                document.querySelectorAll('.btn-group button').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                button.classList.add('active');
-                
-                // تحديث نوع التصفية
-                const filterText = button.textContent.trim().toLowerCase();
-                switch (filterText) {
-                    case 'إيداع':
-                        this.filterType = 'deposit';
-                        break;
-                    case 'سحب':
-                        this.filterType = 'withdraw';
-                        break;
-                    case 'أرباح':
-                        this.filterType = 'profit';
-                        break;
-                    default:
-                        this.filterType = 'all';
-                }
-                
-                // تحديث الجدول
-                this.renderTransactionsTable();
-            });
-        });
-        
-        // عرض ملاحظات العملية
-        this.transactionsTable.addEventListener('click', (e) => {
-            const viewNotesBtn = e.target.closest('.view-notes');
-            const viewTransactionBtn = e.target.closest('.view-transaction');
-            
-            if (viewNotesBtn) {
-                const notes = viewNotesBtn.getAttribute('data-notes');
-                alert(notes);
-            }
-            
-            if (viewTransactionBtn) {
-                const transactionId = viewTransactionBtn.getAttribute('data-id');
-                this.showTransactionDetails(transactionId);
-            }
-        });
-        
-        // تغيير المستثمر في نموذج السحب لعرض الرصيد
-        this.withdrawInvestorSelect.addEventListener('change', () => {
-            this.updateWithdrawInfo();
-        });
-    }
-    
-    // تحديث معلومات السحب
-    updateWithdrawInfo() {
-        const investorId = this.withdrawInvestorSelect.value;
-        
-        if (investorId) {
-            const investor = this.investors.find(inv => inv.id === investorId);
-            
-            if (investor) {
-                this.withdrawBalanceInfo.innerHTML = `
-                    <div class="alert alert-info">
-                        <div class="alert-title">معلومات الرصيد</div>
-                        <div class="alert-content">
-                            <strong>الرصيد الحالي:</strong> ${formatCurrency(investor.amount)} ${SYSTEM_CONFIG.currency}
-                        </div>
-                    </div>
-                `;
-                
-                // تعيين الحد الأقصى للسحب
-                document.getElementById('withdraw-amount').max = investor.amount;
-            }
-        } else {
-            this.withdrawBalanceInfo.innerHTML = '';
+        if (addWithdrawBtn) {
+            addWithdrawBtn.addEventListener('click', () => this.openWithdrawModal());
         }
     }
     
     // فتح نافذة الإيداع
     openDepositModal() {
-        // إعادة تعيين النموذج
-        document.getElementById('add-deposit-form').reset();
-        
-        // تعيين تاريخ اليوم كتاريخ افتراضي
-        document.getElementById('deposit-date').value = new Date().toISOString().split('T')[0];
-        
-        // عرض النافذة المنبثقة
-        this.depositModal.classList.add('active');
+        const modal = document.getElementById('add-deposit-modal');
+        if (modal) {
+            // إعادة تعيين النموذج
+            if (this.depositForm) {
+                this.depositForm.reset();
+            }
+            
+            // تعيين تاريخ اليوم
+            if (this.depositDateInput) {
+                this.depositDateInput.value = new Date().toISOString().split('T')[0];
+            }
+            
+            // تحديث قوائم المستثمرين
+            this.populateInvestorSelects();
+            
+            // فتح النافذة
+            modal.classList.add('active');
+        }
     }
     
     // فتح نافذة السحب
     openWithdrawModal() {
-        // إعادة تعيين النموذج
-        document.getElementById('add-withdraw-form').reset();
-        this.withdrawBalanceInfo.innerHTML = '';
-        
-        // تعيين تاريخ اليوم كتاريخ افتراضي
-        document.getElementById('withdraw-date').value = new Date().toISOString().split('T')[0];
-        
-        // عرض النافذة المنبثقة
-        this.withdrawModal.classList.add('active');
-    }
-    
-    // التحقق من نموذج الإيداع
-    validateDepositForm() {
-        const investorSelect = document.getElementById('deposit-investor');
-        const amountInput = document.getElementById('deposit-amount');
-        const dateInput = document.getElementById('deposit-date');
-        
-        let isValid = true;
-        
-        if (!investorSelect.value) {
-            isValid = false;
-            investorSelect.classList.add('error');
-        } else {
-            investorSelect.classList.remove('error');
-        }
-        
-        if (!amountInput.value || Number(amountInput.value) <= 0) {
-            isValid = false;
-            amountInput.classList.add('error');
-        } else {
-            amountInput.classList.remove('error');
-        }
-        
-        if (!dateInput.value) {
-            isValid = false;
-            dateInput.classList.add('error');
-        } else {
-            dateInput.classList.remove('error');
-        }
-        
-        return isValid;
-    }
-    
-    // التحقق من نموذج السحب
-    validateWithdrawForm() {
-        const investorSelect = document.getElementById('withdraw-investor');
-        const amountInput = document.getElementById('withdraw-amount');
-        const dateInput = document.getElementById('withdraw-date');
-        
-        let isValid = true;
-        
-        if (!investorSelect.value) {
-            isValid = false;
-            investorSelect.classList.add('error');
-        } else {
-            investorSelect.classList.remove('error');
-        }
-        
-        if (!amountInput.value || Number(amountInput.value) <= 0) {
-            isValid = false;
-            amountInput.classList.add('error');
-        } else {
-            amountInput.classList.remove('error');
-        }
-        
-        if (!dateInput.value) {
-            isValid = false;
-            dateInput.classList.add('error');
-        } else {
-            dateInput.classList.remove('error');
-        }
-        
-        // التحقق من أن المبلغ المطلوب سحبه لا يتجاوز رصيد المستثمر
-        if (investorSelect.value && amountInput.value) {
-            const investor = this.investors.find(inv => inv.id === investorSelect.value);
-            if (investor && Number(amountInput.value) > Number(investor.amount)) {
-                isValid = false;
-                amountInput.classList.add('error');
-                this.showNotification('المبلغ المطلوب سحبه أكبر من رصيد المستثمر', 'danger');
+        const modal = document.getElementById('add-withdraw-modal');
+        if (modal) {
+            // إعادة تعيين النموذج
+            if (this.withdrawForm) {
+                this.withdrawForm.reset();
             }
+            
+            // تعيين تاريخ اليوم
+            if (this.withdrawDateInput) {
+                this.withdrawDateInput.value = new Date().toISOString().split('T')[0];
+            }
+            
+            // تحديث قوائم المستثمرين
+            this.populateInvestorSelects();
+            
+            // مسح معلومات الرصيد
+            if (this.withdrawBalanceInfo) {
+                this.withdrawBalanceInfo.innerHTML = '';
+            }
+            
+            // فتح النافذة
+            modal.classList.add('active');
         }
-        
-        return isValid;
     }
     
-    // حفظ عملية الإيداع
-    saveDeposit() {
-        if (!this.validateDepositForm()) {
+    // ملء قوائم اختيار المستثمرين
+    populateInvestorSelects() {
+        // الحصول على المستثمرين
+        const investors = db.getAllInvestors();
+        
+        // ترتيب المستثمرين أبجديًا
+        const sortedInvestors = [...investors].sort((a, b) => a.name.localeCompare(b.name));
+        
+        // ملء قائمة الإيداع
+        if (this.depositInvestorSelect) {
+            this.depositInvestorSelect.innerHTML = '<option value="">اختر المستثمر</option>';
+            
+            sortedInvestors.forEach(investor => {
+                const option = document.createElement('option');
+                option.value = investor.id;
+                option.textContent = `${investor.name} (${investor.phone})`;
+                this.depositInvestorSelect.appendChild(option);
+            });
+        }
+        
+        // ملء قائمة السحب
+        if (this.withdrawInvestorSelect) {
+            this.withdrawInvestorSelect.innerHTML = '<option value="">اختر المستثمر</option>';
+            
+            sortedInvestors.forEach(investor => {
+                const option = document.createElement('option');
+                option.value = investor.id;
+                option.textContent = `${investor.name} (${investor.phone})`;
+                this.withdrawInvestorSelect.appendChild(option);
+            });
+        }
+    }
+    
+    // عرض رصيد المستثمر في نموذج السحب
+    showInvestorBalance() {
+        if (!this.withdrawInvestorSelect || !this.withdrawBalanceInfo) return;
+        
+        const investorId = this.withdrawInvestorSelect.value;
+        
+        if (!investorId) {
+            this.withdrawBalanceInfo.innerHTML = '';
             return;
         }
         
-        const investorId = document.getElementById('deposit-investor').value;
-        const amount = Number(document.getElementById('deposit-amount').value);
-        const date = document.getElementById('deposit-date').value;
-        const notes = document.getElementById('deposit-notes').value.trim();
+        // الحصول على المستثمر
+        const investor = db.getInvestor(investorId);
         
-        // إنشاء عملية الإيداع
-        const depositData = {
+        if (!investor) {
+            this.withdrawBalanceInfo.innerHTML = '';
+            return;
+        }
+        
+        // عرض رصيد المستثمر
+        const totalInvestment = investor.amount || 0;
+        
+        this.withdrawBalanceInfo.innerHTML = `
+            <label class="form-label">الرصيد المتاح</label>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 1rem;">
+                ${formatCurrency(totalInvestment)} ${SYSTEM_CONFIG.currency}
+            </div>
+        `;
+    }
+    
+    // إضافة إيداع جديد
+    addDeposit() {
+        // التحقق من وجود الحقول المطلوبة
+        if (!this.depositInvestorSelect || !this.depositAmountInput || !this.depositDateInput) {
+            showNotification('خطأ في النموذج: بعض الحقول المطلوبة غير موجودة', 'error');
+            return;
+        }
+        
+        // قراءة قيم الحقول
+        const investorId = this.depositInvestorSelect.value;
+        const amount = parseFloat(this.depositAmountInput.value);
+        const depositDate = this.depositDateInput.value;
+        const notes = this.depositNotesInput ? this.depositNotesInput.value : '';
+        
+        // التحقق من صحة البيانات
+        if (!investorId || isNaN(amount) || amount <= 0 || !depositDate) {
+            showNotification('يرجى إدخال جميع البيانات المطلوبة بشكل صحيح', 'error');
+            return;
+        }
+        
+        // الحصول على المستثمر
+        const investor = db.getInvestor(investorId);
+        
+        if (!investor) {
+            showNotification('لم يتم العثور على بيانات المستثمر', 'error');
+            return;
+        }
+        
+        // إضافة العملية
+        const transaction = db.addTransaction({
             investorId,
             type: TRANSACTION_TYPES.DEPOSIT,
             amount,
-            date,
-            notes,
-            status: TRANSACTION_STATUS.COMPLETED
-        };
+            date: depositDate,
+            notes
+        });
         
-        // إضافة العملية
-        const newTransaction = db.addTransaction(depositData);
-        
-        if (newTransaction) {
-            // عرض رسالة نجاح
-            this.showNotification('تمت عملية الإيداع بنجاح', 'success');
-            
-            // تحديث البيانات
-            this.refresh();
-            
+        if (transaction) {
             // إغلاق النافذة المنبثقة
-            this.depositModal.classList.remove('active');
+            const modal = document.getElementById('add-deposit-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            
+            // تحديث الواجهة
+            this.renderTransactionsTable();
+            this.renderRecentTransactions();
+            
+            // تحديث بيانات الواجهة الأخرى
+            if (window.app) {
+                window.app.updateDashboard();
+            }
+            
+            // عرض إشعار النجاح
+            showNotification(`تم إضافة إيداع جديد بمبلغ ${formatCurrency(amount)} ${SYSTEM_CONFIG.currency} للمستثمر ${investor.name} بنجاح!`, 'success');
         } else {
-            // عرض رسالة خطأ
-            this.showNotification('حدث خطأ أثناء عملية الإيداع', 'danger');
+            showNotification('حدث خطأ أثناء إضافة الإيداع', 'error');
         }
     }
     
-    // حفظ عملية السحب
-    saveWithdraw() {
-        if (!this.validateWithdrawForm()) {
+    // سحب مبلغ
+    withdrawAmount() {
+        // التحقق من وجود الحقول المطلوبة
+        if (!this.withdrawInvestorSelect || !this.withdrawAmountInput || !this.withdrawDateInput) {
+            showNotification('خطأ في النموذج: بعض الحقول المطلوبة غير موجودة', 'error');
             return;
         }
         
-        const investorId = document.getElementById('withdraw-investor').value;
-        const amount = Number(document.getElementById('withdraw-amount').value);
-        const date = document.getElementById('withdraw-date').value;
-        const notes = document.getElementById('withdraw-notes').value.trim();
+        // قراءة قيم الحقول
+        const investorId = this.withdrawInvestorSelect.value;
+        const amount = parseFloat(this.withdrawAmountInput.value);
+        const withdrawDate = this.withdrawDateInput.value;
+        const notes = this.withdrawNotesInput ? this.withdrawNotesInput.value : '';
         
-        // إنشاء عملية السحب
-        const withdrawData = {
+        // التحقق من صحة البيانات
+        if (!investorId || isNaN(amount) || amount <= 0 || !withdrawDate) {
+            showNotification('يرجى إدخال جميع البيانات المطلوبة بشكل صحيح', 'error');
+            return;
+        }
+        
+        // الحصول على المستثمر
+        const investor = db.getInvestor(investorId);
+        
+        if (!investor) {
+            showNotification('لم يتم العثور على بيانات المستثمر', 'error');
+            return;
+        }
+        
+        // التحقق من كفاية الرصيد
+        if (amount > (investor.amount || 0)) {
+            showNotification('مبلغ السحب أكبر من الرصيد المتاح', 'error');
+            return;
+        }
+        
+        // إضافة العملية
+        const transaction = db.addTransaction({
             investorId,
             type: TRANSACTION_TYPES.WITHDRAW,
             amount,
-            date,
-            notes,
-            status: TRANSACTION_STATUS.COMPLETED
-        };
-        
-        // إضافة العملية
-        const newTransaction = db.addTransaction(withdrawData);
-        
-        if (newTransaction) {
-            // عرض رسالة نجاح
-            this.showNotification('تمت عملية السحب بنجاح', 'success');
-            
-            // تحديث البيانات
-            this.refresh();
-            
-            // إغلاق النافذة المنبثقة
-            this.withdrawModal.classList.remove('active');
-        } else {
-            // عرض رسالة خطأ
-            this.showNotification('حدث خطأ أثناء عملية السحب', 'danger');
-        }
-    }
-    
-    // عرض تفاصيل العملية
-    showTransactionDetails(transactionId) {
-        const transaction = db.getTransactionById(transactionId);
+            date: withdrawDate,
+            notes
+        });
         
         if (transaction) {
-            const investor = this.investors.find(inv => inv.id === transaction.investorId) || { name: 'غير معروف' };
-            
-            let typeClass = '';
-            switch (transaction.type) {
-                case TRANSACTION_TYPES.DEPOSIT:
-                    typeClass = 'success';
-                    break;
-                case TRANSACTION_TYPES.WITHDRAW:
-                    typeClass = 'danger';
-                    break;
-                case TRANSACTION_TYPES.PROFIT:
-                    typeClass = 'primary';
-                    break;
+            // إغلاق النافذة المنبثقة
+            const modal = document.getElementById('add-withdraw-modal');
+            if (modal) {
+                modal.classList.remove('active');
             }
             
-            const detailsHTML = `
-                <div class="transaction-details">
-                    <div class="transaction-header">
-                        <div class="transaction-badge ${typeClass.toLowerCase()}">${transaction.type}</div>
-                        <div class="transaction-date">${formatDate(transaction.date || transaction.createdAt)}</div>
-                    </div>
-                    
-                    <div class="transaction-info">
-                        <h3>معلومات العملية</h3>
-                        <div class="detail-item">
-                            <div class="detail-label">المعرف</div>
-                            <div class="detail-value">${transaction.id}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">المستثمر</div>
-                            <div class="detail-value">${investor.name} (${investor.id})</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">النوع</div>
-                            <div class="detail-value">${transaction.type}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">التاريخ</div>
-                            <div class="detail-value">${formatDate(transaction.date || transaction.createdAt)}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">المبلغ</div>
-                            <div class="detail-value">${formatCurrency(transaction.amount)} ${SYSTEM_CONFIG.currency}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">الرصيد بعد العملية</div>
-                            <div class="detail-value">${transaction.balanceAfter ? formatCurrency(transaction.balanceAfter) + ' ' + SYSTEM_CONFIG.currency : '-'}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">الحالة</div>
-                            <div class="detail-value">${transaction.status}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">الملاحظات</div>
-                            <div class="detail-value">${transaction.notes || 'لا توجد ملاحظات'}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // تحديث الواجهة
+            this.renderTransactionsTable();
+            this.renderRecentTransactions();
             
-            // استخدام مكونات الإشعارات لعرض التفاصيل
-            if (window.notifications) {
-                window.notifications.showCustom('تفاصيل العملية', detailsHTML);
-            } else {
-                alert(`تفاصيل العملية: ${transaction.id}\nالمستثمر: ${investor.name}\nالنوع: ${transaction.type}\nالمبلغ: ${formatCurrency(transaction.amount)} ${SYSTEM_CONFIG.currency}\nالتاريخ: ${formatDate(transaction.date || transaction.createdAt)}`);
+            // تحديث بيانات الواجهة الأخرى
+            if (window.app) {
+                window.app.updateDashboard();
             }
-        }
-    }
-    
-    // عرض إشعار
-    showNotification(message, type = 'success') {
-        // استدعاء وظيفة الإشعارات العامة
-        if (window.notifications) {
-            window.notifications.show(message, type);
+            
+            // عرض إشعار النجاح
+            showNotification(`تم سحب مبلغ ${formatCurrency(amount)} ${SYSTEM_CONFIG.currency} من حساب المستثمر ${investor.name} بنجاح!`, 'success');
         } else {
-            alert(message);
+            showNotification('حدث خطأ أثناء إجراء السحب', 'error');
         }
     }
     
-    // تحديث صفحة العمليات
-    async refresh() {
-        await this.loadData();
-        this.renderTransactionsTable();
-        this.updateInvestorsSelects();
+    // عرض جدول العمليات
+    renderTransactionsTable() {
+        const tableBody = document.querySelector('#transactions-table tbody');
+        if (!tableBody) return;
+        
+        // الحصول على العمليات من قاعدة البيانات
+        const transactions = db.getAllTransactions();
+        
+        // ترتيب العمليات حسب التاريخ (الأحدث أولاً)
+        const sortedTransactions = [...transactions].sort((a, b) => {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        
+        // تفريغ الجدول
+        tableBody.innerHTML = '';
+        
+        // عرض العمليات
+        if (sortedTransactions.length > 0) {
+            sortedTransactions.forEach(transaction => {
+                // تحديد نوع العملية وأيقونتها
+                let typeClass = '';
+                let typeIcon = '';
+                
+                switch(transaction.type) {
+                    case TRANSACTION_TYPES.DEPOSIT:
+                        typeClass = 'success';
+                        typeIcon = '<i class="fas fa-arrow-up"></i>';
+                        break;
+                    case TRANSACTION_TYPES.WITHDRAW:
+                        typeClass = 'danger';
+                        typeIcon = '<i class="fas fa-arrow-down"></i>';
+                        break;
+                    case TRANSACTION_TYPES.PROFIT:
+                        typeClass = 'info';
+                        typeIcon = '<i class="fas fa-hand-holding-usd"></i>';
+                        break;
+                    default:
+                        typeClass = 'primary';
+                        typeIcon = '<i class="fas fa-exchange-alt"></i>';
+                }
+                
+                // إنشاء الصف
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${transaction.id}</td>
+                    <td>${transaction.investorName}</td>
+                    <td>
+                        <span class="badge badge-${typeClass}">${typeIcon} ${transaction.type}</span>
+                    </td>
+                    <td>${formatDate(transaction.date)}</td>
+                    <td>${formatCurrency(transaction.amount)} ${SYSTEM_CONFIG.currency}</td>
+                    <td>${transaction.balanceAfter !== undefined ? formatCurrency(transaction.balanceAfter) + ' ' + SYSTEM_CONFIG.currency : '-'}</td>
+                    <td>
+                        <button class="btn btn-outline btn-sm view-transaction" data-id="${transaction.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        } else {
+            // عرض رسالة فارغة
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="7" class="text-center">لا يوجد عمليات</td>';
+            tableBody.appendChild(emptyRow);
+        }
+    }
+    
+    // عرض آخر العمليات في لوحة التحكم
+    renderRecentTransactions() {
+        const tableBody = document.querySelector('#recent-transactions tbody');
+        if (!tableBody) return;
+        
+        // الحصول على العمليات من قاعدة البيانات
+        const transactions = db.getAllTransactions();
+        
+        // ترتيب العمليات حسب التاريخ (الأحدث أولاً) وأخذ أحدث 5 عمليات
+        const recentTransactions = [...transactions]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 5);
+        
+        // تفريغ الجدول
+        tableBody.innerHTML = '';
+        
+        // عرض العمليات
+        if (recentTransactions.length > 0) {
+            recentTransactions.forEach(transaction => {
+                // تحديد حالة العملية
+                let statusClass = 'active';
+                
+                switch(transaction.type) {
+                    case TRANSACTION_TYPES.DEPOSIT:
+                        statusClass = 'success';
+                        break;
+                    case TRANSACTION_TYPES.WITHDRAW:
+                        statusClass = 'warning';
+                        break;
+                    case TRANSACTION_TYPES.PROFIT:
+                        statusClass = 'info';
+                        break;
+                }
+                
+                // إنشاء الصف
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${transaction.id}</td>
+                    <td>${transaction.investorName}</td>
+                    <td>${transaction.type}</td>
+                    <td>${formatDate(transaction.date)}</td>
+                    <td>${formatCurrency(transaction.amount)} ${SYSTEM_CONFIG.currency}</td>
+                    <td><span class="status status-${statusClass}">مكتمل</span></td>
+                    <td>
+                        <button class="btn btn-outline btn-sm view-transaction" data-id="${transaction.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        } else {
+            // عرض رسالة فارغة
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="7" class="text-center">لا يوجد عمليات حديثة</td>';
+            tableBody.appendChild(emptyRow);
+        }
     }
 }
 
-// إنشاء كائن إدارة العمليات عند تحميل الصفحة
+// إنشاء مدير العمليات عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
     window.transactionsManager = new TransactionsManager();
 });

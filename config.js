@@ -1,9 +1,8 @@
 /**
- * نظام الاستثمار المتكامل - ملف الإعدادات المصحح
- * يحتوي على الثوابت والإعدادات الأساسية للنظام وتعديل آلية احتساب الأرباح
+ * نظام الاستثمار المتكامل - ملف الإعدادات
+ * يحتوي على الثوابت والإعدادات الأساسية للنظام
  */
 
-// إعدادات النظام
 const SYSTEM_CONFIG = {
     // إعدادات عامة
     systemName: "نظام الاستثمار المتكامل",
@@ -11,7 +10,7 @@ const SYSTEM_CONFIG = {
     language: "ar",
     
     // إعدادات الأرباح
-    interestRate: 17.5, // نسبة الربح الشهري (17.5 دينار لكل 1000 دينار)
+    interestRate: 17.5, // نسبة الربح الشهري
     profitCalculation: "daily", // طريقة حساب الأرباح (daily, monthly)
     profitCycle: 30, // دورة دفع الأرباح بالأيام
     
@@ -41,7 +40,7 @@ const INVESTOR_STATUS = {
 const TRANSACTION_TYPES = {
     DEPOSIT: "إيداع",
     WITHDRAW: "سحب",
-    PROFIT: "دفع أرباح"
+    PROFIT: "أرباح"
 };
 
 // حالات العمليات
@@ -131,16 +130,8 @@ function formatDateTime(date) {
     }
 }
 
-/**
- * وظيفة حساب الربح المعدلة
- * تحسب الربح بناءً على المعادلة الجديدة: 17,000 دينار لكل مليون دينار
- * أي ما يعادل 1.7% شهرياً (أو 17.5 دينار لكل 1000 دينار)
- * 
- * @param {number} amount - المبلغ المستثمر
- * @param {number} days - عدد أيام الاستثمار
- * @returns {number} - مبلغ الربح
- */
-function calculateProfit(amount, days) {
+// وظيفة حساب الربح
+function calculateProfit(amount, days, rate = SYSTEM_CONFIG.interestRate) {
     // التحقق من البيانات المدخلة
     if (!amount || isNaN(amount) || amount <= 0) {
         return 0;
@@ -150,20 +141,9 @@ function calculateProfit(amount, days) {
         days = 30; // استخدام القيمة الافتراضية إذا كانت غير صالحة
     }
     
-    // القيمة الثابتة: 17.5 دينار لكل 1000 دينار شهرياً
-    const monthlyRatePerThousand = SYSTEM_CONFIG.interestRate;
-    
-    // حساب الربح الشهري
-    let monthlyProfit = (amount / 1000) * monthlyRatePerThousand;
-    
-    // حساب الربح اليومي
-    if (SYSTEM_CONFIG.profitCalculation === 'daily') {
-        // حساب الربح حسب عدد الأيام (جزء من الشهر)
-        return (monthlyProfit / 30) * days;
-    } else {
-        // حساب الربح الشهري كاملاً بغض النظر عن عدد الأيام
-        return monthlyProfit;
-    }
+    // تحويل النسبة السنوية إلى يومية
+    const dailyRate = (rate / 30);
+    return (amount * (dailyRate / 100) * days);
 }
 
 // وظيفة لإنشاء معرف فريد

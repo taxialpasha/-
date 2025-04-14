@@ -1,354 +1,472 @@
 /**
- * نظام الاستثمار المتكامل - ملف قاعدة البيانات
- * يتعامل مع تخزين واسترجاع بيانات النظام
+ * نظام الاستثمار المتكامل - إدارة قاعدة البيانات
+ * يوفر طبقة وسيطة للتعامل مع البيانات المخزنة في LocalStorage
  */
 
 class Database {
     constructor() {
-        this.investors = [];
-        this.transactions = [];
-        this.profits = [];
+        // المفاتيح المستخدمة في التخزين المحلي
+        this.KEYS = {
+            INVESTORS: 'investors',
+            TRANSACTIONS: 'transactions',
+            PROFITS: 'profits',
+        };
         
-        // تحميل البيانات من التخزين المحلي
-        this.loadData();
+        // تهيئة البيانات الأولية إذا كانت فارغة
+        this.initializeData();
     }
     
-    // تحميل البيانات من التخزين المحلي
-    loadData() {
-        try {
-            const savedInvestors = localStorage.getItem('investors');
-            if (savedInvestors) {
-                this.investors = JSON.parse(savedInvestors);
-            }
-            
-            const savedTransactions = localStorage.getItem('transactions');
-            if (savedTransactions) {
-                this.transactions = JSON.parse(savedTransactions);
-            }
-            
-            const savedProfits = localStorage.getItem('profits');
-            if (savedProfits) {
-                this.profits = JSON.parse(savedProfits);
-            }
-            
-            console.log('تم تحميل البيانات بنجاح');
-        } catch (error) {
-            console.error('خطأ في تحميل البيانات:', error);
+    // تهيئة قاعدة البيانات
+    initializeData() {
+        if (!localStorage.getItem(this.KEYS.INVESTORS)) {
+            localStorage.setItem(this.KEYS.INVESTORS, JSON.stringify([]));
+        }
+        
+        if (!localStorage.getItem(this.KEYS.TRANSACTIONS)) {
+            localStorage.setItem(this.KEYS.TRANSACTIONS, JSON.stringify([]));
+        }
+        
+        if (!localStorage.getItem(this.KEYS.PROFITS)) {
+            localStorage.setItem(this.KEYS.PROFITS, JSON.stringify([]));
         }
     }
     
-    // حفظ البيانات في التخزين المحلي
-    saveData() {
-        try {
-            localStorage.setItem('investors', JSON.stringify(this.investors));
-            localStorage.setItem('transactions', JSON.stringify(this.transactions));
-            localStorage.setItem('profits', JSON.stringify(this.profits));
-            
-            // إطلاق حدث لتحديث واجهة المستخدم
-            document.dispatchEvent(new CustomEvent('data:updated'));
-            
-            return true;
-        } catch (error) {
-            console.error('خطأ في حفظ البيانات:', error);
-            return false;
-        }
-    }
+    // --- المستثمرين ---
     
-    // الحصول على جميع المستثمرين
+    // استرجاع جميع المستثمرين
     getAllInvestors() {
-        return [...this.investors];
-    }
-    
-    // الحصول على مستثمر معين
-    getInvestor(id) {
-        return this.investors.find(investor => investor.id === id);
+        try {
+            return JSON.parse(localStorage.getItem(this.KEYS.INVESTORS)) || [];
+        } catch (error) {
+            console.error('خطأ في استرجاع بيانات المستثمرين:', error);
+            return [];
+        }
     }
     
     // إضافة مستثمر جديد
-    addInvestor(investorData) {
-        // إنشاء معرف فريد للمستثمر إذا لم يكن موجودًا
-        const id = investorData.id || generateId('inv-');
-        const createdAt = new Date().toISOString();
-        
-        // إنشاء المستثمر
-        const investor = {
-            id,
-            name: investorData.name,
-            phone: investorData.phone,
-            address: investorData.address,
-            cardNumber: investorData.card || investorData.cardNumber,
-            joinDate: investorData.depositDate || investorData.joinDate || createdAt,
-            createdAt,
-            status: investorData.status || INVESTOR_STATUS.ACTIVE,
-            amount: parseFloat(investorData.amount) || 0,
-            investments: investorData.investments || [
-                {
-                    amount: parseFloat(investorData.amount) || 0,
-                    date: investorData.depositDate || investorData.joinDate || createdAt,
-                    interest: calculateProfit(parseFloat(investorData.amount) || 0, 30)
-                }
-            ],
-            profits: investorData.profits || [],
-            withdrawals: investorData.withdrawals || []
-        };
-        
-        // إضافة المستثمر إلى المصفوفة
-        this.investors.push(investor);
-        
-        // إضافة عملية إيداع أولية
-        if (!investorData.skipInitialDeposit) {
-            this.addTransaction({
-                investorId: id,
-                investorName: investor.name,
-                type: TRANSACTION_TYPES.DEPOSIT,
-                amount: parseFloat(investorData.amount) || 0,
-                date: investorData.depositDate || investorData.joinDate || createdAt,
-                status: TRANSACTION_STATUS.COMPLETED
-            });
+    addInvestor(investor) {
+        try {
+            const investors = this.getAllInvestors();
+            
+            // إضافة معرف فريد ووقت الإنشاء
+            investor.id = generateId('inv');
+            investor.createdAt = new Date().toISOString();
+            investor.updatedAt = new Date().toISOString();
+            
+            investors.push(investor);
+            localStorage.setItem(this.KEYS.INVESTORS, JSON.stringify(investors));
+            
+            // إضافة عملية إيداع مبدئية
+            if (investor.amount > 0) {
+                this.addTransaction({
+                    investorId: investor.id,
+                    type: TRANSACTION_TYPES.DEPOSIT,
+                    amount: investor.amount,
+                    date: investor.depositDate || investor.createdAt,
+                    notes: 'إيداع مبدئي',
+                    status: TRANSACTION_STATUS.COMPLETED
+                });
+            }
+            
+            return investor;
+        } catch (error) {
+            console.error('خطأ في إضافة مستثمر:', error);
+            return null;
         }
-        
-        // حفظ البيانات
-        this.saveData();
-        
-        return investor;
+    }
+    
+    // الحصول على مستثمر بواسطة المعرف
+    getInvestorById(id) {
+        try {
+            const investors = this.getAllInvestors();
+            return investors.find(investor => investor.id === id) || null;
+        } catch (error) {
+            console.error('خطأ في استرجاع بيانات المستثمر:', error);
+            return null;
+        }
     }
     
     // تحديث بيانات مستثمر
-    updateInvestor(id, investorData) {
-        const index = this.investors.findIndex(investor => investor.id === id);
-        
-        if (index === -1) {
-            return false;
+    updateInvestor(id, updatedData) {
+        try {
+            const investors = this.getAllInvestors();
+            const index = investors.findIndex(investor => investor.id === id);
+            
+            if (index !== -1) {
+                // الاحتفاظ بالمعرف ووقت الإنشاء
+                updatedData.id = investors[index].id;
+                updatedData.createdAt = investors[index].createdAt;
+                updatedData.updatedAt = new Date().toISOString();
+                
+                investors[index] = { ...investors[index], ...updatedData };
+                localStorage.setItem(this.KEYS.INVESTORS, JSON.stringify(investors));
+                return investors[index];
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('خطأ في تحديث بيانات المستثمر:', error);
+            return null;
         }
-        
-        // تحديث بيانات المستثمر
-        this.investors[index] = {
-            ...this.investors[index],
-            name: investorData.name || this.investors[index].name,
-            phone: investorData.phone || this.investors[index].phone,
-            address: investorData.address || this.investors[index].address,
-            cardNumber: investorData.cardNumber || this.investors[index].cardNumber,
-            status: investorData.status || this.investors[index].status,
-            // لا نقوم بتحديث المبلغ مباشرة، بل من خلال الإيداعات والسحوبات
-            // كما لا نقوم بتحديث تاريخ الانضمام
-        };
-        
-        // حفظ البيانات
-        this.saveData();
-        
-        return this.investors[index];
     }
     
     // حذف مستثمر
     deleteInvestor(id) {
-        const index = this.investors.findIndex(investor => investor.id === id);
-        
-        if (index === -1) {
+        try {
+            const investors = this.getAllInvestors();
+            const filteredInvestors = investors.filter(investor => investor.id !== id);
+            
+            if (filteredInvestors.length !== investors.length) {
+                localStorage.setItem(this.KEYS.INVESTORS, JSON.stringify(filteredInvestors));
+                
+                // حذف العمليات المرتبطة بالمستثمر
+                const transactions = this.getAllTransactions();
+                const filteredTransactions = transactions.filter(transaction => transaction.investorId !== id);
+                localStorage.setItem(this.KEYS.TRANSACTIONS, JSON.stringify(filteredTransactions));
+                
+                // حذف الأرباح المرتبطة بالمستثمر
+                const profits = this.getAllProfits();
+                const filteredProfits = profits.filter(profit => profit.investorId !== id);
+                localStorage.setItem(this.KEYS.PROFITS, JSON.stringify(filteredProfits));
+                
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('خطأ في حذف المستثمر:', error);
             return false;
         }
-        
-        // حذف المستثمر من المصفوفة
-        this.investors.splice(index, 1);
-        
-        // حفظ البيانات
-        this.saveData();
-        
-        return true;
     }
     
-    // الحصول على جميع العمليات
+    // الحصول على إحصائيات المستثمرين
+    getInvestorsStats() {
+        try {
+            const investors = this.getAllInvestors();
+            const transactions = this.getAllTransactions();
+            const profits = this.getAllProfits();
+            
+            const activeInvestors = investors.filter(inv => inv.status === INVESTOR_STATUS.ACTIVE).length;
+            const totalInvestments = investors.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+            
+            // تجميع البيانات حسب تاريخ الإنشاء (شهرياً)
+            const investorsByMonth = {};
+            investors.forEach(inv => {
+                const date = new Date(inv.createdAt);
+                const month = `${date.getFullYear()}-${date.getMonth() + 1}`;
+                
+                if (!investorsByMonth[month]) {
+                    investorsByMonth[month] = 0;
+                }
+                
+                investorsByMonth[month]++;
+            });
+            
+            return {
+                total: investors.length,
+                active: activeInvestors,
+                totalInvestments,
+                investorsByMonth
+            };
+        } catch (error) {
+            console.error('خطأ في استرجاع إحصائيات المستثمرين:', error);
+            return {
+                total: 0,
+                active: 0,
+                totalInvestments: 0,
+                investorsByMonth: {}
+            };
+        }
+    }
+    
+    // --- العمليات ---
+    
+    // استرجاع جميع العمليات
     getAllTransactions() {
-        return [...this.transactions];
+        try {
+            return JSON.parse(localStorage.getItem(this.KEYS.TRANSACTIONS)) || [];
+        } catch (error) {
+            console.error('خطأ في استرجاع بيانات العمليات:', error);
+            return [];
+        }
+    }
+    
+    // إضافة عملية جديدة
+    addTransaction(transaction) {
+        try {
+            const transactions = this.getAllTransactions();
+            
+            // إضافة معرف فريد ووقت الإنشاء
+            transaction.id = generateId('trx');
+            transaction.createdAt = new Date().toISOString();
+            
+            // حساب الرصيد بعد العملية
+            const investor = this.getInvestorById(transaction.investorId);
+            if (investor) {
+                let newBalance = Number(investor.amount) || 0;
+                
+                if (transaction.type === TRANSACTION_TYPES.DEPOSIT) {
+                    newBalance += Number(transaction.amount) || 0;
+                    
+                    // تحديث رصيد المستثمر
+                    this.updateInvestor(investor.id, { amount: newBalance });
+                } else if (transaction.type === TRANSACTION_TYPES.WITHDRAW) {
+                    newBalance -= Number(transaction.amount) || 0;
+                    
+                    // تحديث رصيد المستثمر
+                    this.updateInvestor(investor.id, { amount: newBalance });
+                }
+                
+                transaction.balanceAfter = newBalance;
+            }
+            
+            transactions.push(transaction);
+            localStorage.setItem(this.KEYS.TRANSACTIONS, JSON.stringify(transactions));
+            
+            return transaction;
+        } catch (error) {
+            console.error('خطأ في إضافة عملية:', error);
+            return null;
+        }
+    }
+    
+    // الحصول على عملية بواسطة المعرف
+    getTransactionById(id) {
+        try {
+            const transactions = this.getAllTransactions();
+            return transactions.find(transaction => transaction.id === id) || null;
+        } catch (error) {
+            console.error('خطأ في استرجاع بيانات العملية:', error);
+            return null;
+        }
     }
     
     // الحصول على عمليات مستثمر معين
     getInvestorTransactions(investorId) {
-        return this.transactions.filter(transaction => transaction.investorId === investorId);
+        try {
+            const transactions = this.getAllTransactions();
+            return transactions.filter(transaction => transaction.investorId === investorId);
+        } catch (error) {
+            console.error('خطأ في استرجاع عمليات المستثمر:', error);
+            return [];
+        }
     }
     
-    // إضافة عملية جديدة
-    addTransaction(transactionData) {
-        // إنشاء معرف فريد للعملية
-        const id = transactionData.id || generateId('tr-');
-        const createdAt = new Date().toISOString();
-        
-        // الحصول على المستثمر
-        const investor = this.getInvestor(transactionData.investorId);
-        
-        if (!investor && transactionData.type !== 'system') {
-            return false;
-        }
-        
-        // حساب الرصيد بعد العملية
-        let balanceAfter = investor ? investor.amount : 0;
-        
-        if (transactionData.type === TRANSACTION_TYPES.DEPOSIT) {
-            // في حالة الإيداع، نضيف المبلغ إلى رصيد المستثمر
-            if (investor) {
-                investor.amount = (investor.amount || 0) + parseFloat(transactionData.amount);
-                
-                // إضافة استثمار جديد
-                investor.investments.push({
-                    amount: parseFloat(transactionData.amount),
-                    date: transactionData.date || createdAt,
-                    interest: calculateProfit(parseFloat(transactionData.amount), 30),
-                    notes: transactionData.notes || ''
-                });
-                
-                balanceAfter = investor.amount;
-            }
-        } else if (transactionData.type === TRANSACTION_TYPES.WITHDRAW) {
-            // في حالة السحب، نخصم المبلغ من رصيد المستثمر
-            if (investor) {
-                investor.amount = (investor.amount || 0) - parseFloat(transactionData.amount);
-                
-                // تسجيل السحب
-                investor.withdrawals.push({
-                    amount: parseFloat(transactionData.amount),
-                    date: transactionData.date || createdAt,
-                    notes: transactionData.notes || ''
-                });
-                
-                // تحديث الاستثمارات (تخفيض المبالغ بدءًا من الأقدم)
-                let remainingWithdrawal = parseFloat(transactionData.amount);
-                
-                for (let i = 0; i < investor.investments.length; i++) {
-                    if (remainingWithdrawal <= 0) break;
-                    
-                    if (investor.investments[i].amount <= remainingWithdrawal) {
-                        remainingWithdrawal -= investor.investments[i].amount;
-                        investor.investments[i].amount = 0;
-                    } else {
-                        investor.investments[i].amount -= remainingWithdrawal;
-                        remainingWithdrawal = 0;
-                    }
-                    
-                    // إعادة حساب الفائدة
-                    investor.investments[i].interest = calculateProfit(investor.investments[i].amount, 30);
-                }
-                
-                // إزالة الاستثمارات ذات المبلغ الصفري
-                investor.investments = investor.investments.filter(inv => inv.amount > 0);
-                
-                balanceAfter = investor.amount;
-            }
-        } else if (transactionData.type === TRANSACTION_TYPES.PROFIT) {
-            // في حالة الأرباح، لا نقوم بتحديث الرصيد الأساسي
-            balanceAfter = investor ? investor.amount : 0;
-        }
-        
-        // إنشاء العملية
-        const transaction = {
-            id,
-            investorId: transactionData.investorId,
-            investorName: investor ? investor.name : transactionData.investorName || 'غير معروف',
-            type: transactionData.type,
-            amount: parseFloat(transactionData.amount),
-            date: transactionData.date || createdAt,
-            createdAt,
-            notes: transactionData.notes || '',
-            status: transactionData.status || TRANSACTION_STATUS.COMPLETED,
-            balanceAfter
-        };
-        
-        // إضافة العملية إلى المصفوفة
-        this.transactions.push(transaction);
-        
-        // حفظ البيانات
-        this.saveData();
-        
-        return transaction;
-    }
+    // --- الأرباح ---
     
-    // الحصول على جميع الأرباح
+    // استرجاع جميع الأرباح
     getAllProfits() {
-        return [...this.profits];
-    }
-    
-    // الحصول على أرباح مستثمر معين
-    getInvestorProfits(investorId) {
-        return this.profits.filter(profit => profit.investorId === investorId);
+        try {
+            return JSON.parse(localStorage.getItem(this.KEYS.PROFITS)) || [];
+        } catch (error) {
+            console.error('خطأ في استرجاع بيانات الأرباح:', error);
+            return [];
+        }
     }
     
     // إضافة ربح جديد
-    addProfit(profitData) {
-        // إنشاء معرف فريد للربح
-        const id = profitData.id || generateId('prf-');
-        const createdAt = new Date().toISOString();
-        
-        // الحصول على المستثمر
-        const investor = this.getInvestor(profitData.investorId);
-        
-        if (!investor) {
-            return false;
+    addProfit(profit) {
+        try {
+            const profits = this.getAllProfits();
+            
+            // إضافة معرف فريد ووقت الإنشاء
+            profit.id = generateId('pft');
+            profit.createdAt = new Date().toISOString();
+            profit.status = profit.status || PROFIT_STATUS.PENDING;
+            
+            profits.push(profit);
+            localStorage.setItem(this.KEYS.PROFITS, JSON.stringify(profits));
+            
+            return profit;
+        } catch (error) {
+            console.error('خطأ في إضافة ربح:', error);
+            return null;
         }
-        
-        // إنشاء الربح
-        const profit = {
-            id,
-            investorId: profitData.investorId,
-            investorName: investor.name,
-            amount: parseFloat(profitData.amount),
-            startDate: profitData.startDate,
-            endDate: profitData.endDate || createdAt,
-            dueDate: profitData.dueDate,
-            investmentAmount: parseFloat(profitData.investmentAmount) || investor.amount,
-            days: profitData.days || 30,
-            status: profitData.status || PROFIT_STATUS.PENDING,
-            createdAt,
-            paidAt: null,
-            notes: profitData.notes || ''
-        };
-        
-        // إضافة الربح إلى المصفوفة
-        this.profits.push(profit);
-        
-        // حفظ البيانات
-        this.saveData();
-        
-        return profit;
     }
     
     // تحديث حالة الربح
     updateProfitStatus(id, status) {
-        const index = this.profits.findIndex(profit => profit.id === id);
-        
-        if (index === -1) {
-            return false;
-        }
-        
-        // تحديث حالة الربح
-        this.profits[index].status = status;
-        
-        // إذا كانت الحالة "مدفوعة"، فنسجل وقت الدفع
-        if (status === PROFIT_STATUS.PAID) {
-            this.profits[index].paidAt = new Date().toISOString();
+        try {
+            const profits = this.getAllProfits();
+            const index = profits.findIndex(profit => profit.id === id);
             
-            // إضافة عملية دفع ربح
-            this.addTransaction({
-                investorId: this.profits[index].investorId,
-                type: TRANSACTION_TYPES.PROFIT,
-                amount: this.profits[index].amount,
-                date: this.profits[index].paidAt,
-                notes: `دفع ربح عن الفترة من ${formatDate(this.profits[index].startDate)} إلى ${formatDate(this.profits[index].endDate)}`
+            if (index !== -1) {
+                profits[index].status = status;
+                profits[index].updatedAt = new Date().toISOString();
+                
+                // إذا تم الدفع، نضيف تاريخ الدفع
+                if (status === PROFIT_STATUS.PAID) {
+                    profits[index].paidAt = new Date().toISOString();
+                    
+                    // إضافة عملية أرباح
+                    this.addTransaction({
+                        investorId: profits[index].investorId,
+                        type: TRANSACTION_TYPES.PROFIT,
+                        amount: profits[index].amount,
+                        date: profits[index].paidAt,
+                        notes: `دفع أرباح مستحقة للفترة من ${formatDate(profits[index].startDate)} إلى ${formatDate(profits[index].endDate)}`,
+                        status: TRANSACTION_STATUS.COMPLETED
+                    });
+                }
+                
+                localStorage.setItem(this.KEYS.PROFITS, JSON.stringify(profits));
+                return profits[index];
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('خطأ في تحديث حالة الربح:', error);
+            return null;
+        }
+    }
+    
+    // الحصول على أرباح مستثمر معين
+    getInvestorProfits(investorId) {
+        try {
+            const profits = this.getAllProfits();
+            return profits.filter(profit => profit.investorId === investorId);
+        } catch (error) {
+            console.error('خطأ في استرجاع أرباح المستثمر:', error);
+            return [];
+        }
+    }
+    
+    // حساب الأرباح المستحقة للمستثمرين
+    calculateDueProfits() {
+        try {
+            const investors = this.getAllInvestors();
+            const now = new Date();
+            const profits = [];
+            
+            // نقوم بحساب الأرباح لكل مستثمر نشط
+            investors.forEach(investor => {
+                if (investor.status === INVESTOR_STATUS.ACTIVE && investor.amount > 0) {
+                    // تاريخ بداية فترة الاستثمار
+                    let startDate;
+                    if (investor.depositDate) {
+                        startDate = new Date(investor.depositDate);
+                    } else if (investor.createdAt) {
+                        startDate = new Date(investor.createdAt);
+                    } else {
+                        startDate = new Date(now);
+                        startDate.setMonth(startDate.getMonth() - 1);
+                    }
+                    
+                    // تاريخ نهاية فترة الاستثمار (بعد profitCycle يوم)
+                    const endDate = new Date(startDate);
+                    endDate.setDate(endDate.getDate() + SYSTEM_CONFIG.profitCycle);
+                    
+                    // إذا كان تاريخ الاستحقاق قد حل
+                    if (endDate <= now) {
+                        // عدد الأيام من بداية الاستثمار حتى نهايته
+                        const days = daysBetween(startDate, endDate);
+                        
+                        // حساب الربح المستحق
+                        const profitAmount = calculateProfit(investor.amount, days);
+                        
+                        // إضافة الربح المستحق
+                        profits.push({
+                            investorId: investor.id,
+                            amount: profitAmount,
+                            startDate: startDate.toISOString(),
+                            endDate: endDate.toISOString(),
+                            dueDate: endDate.toISOString(),
+                            investmentAmount: investor.amount,
+                            days: days,
+                            status: PROFIT_STATUS.PENDING
+                        });
+                    }
+                }
             });
             
-            // تسجيل الربح في سجل المستثمر
-            const investor = this.getInvestor(this.profits[index].investorId);
-            if (investor) {
-                investor.profits.push({
-                    date: this.profits[index].paidAt,
-                    amount: this.profits[index].amount
-                });
-            }
+            return profits;
+        } catch (error) {
+            console.error('خطأ في حساب الأرباح المستحقة:', error);
+            return [];
         }
-        
-        // حفظ البيانات
-        this.saveData();
-        
-        return this.profits[index];
+    }
+    
+    // نسخ البيانات احتياطياً
+    backupData() {
+        try {
+            const data = {
+                investors: this.getAllInvestors(),
+                transactions: this.getAllTransactions(),
+                profits: this.getAllProfits(),
+                config: SYSTEM_CONFIG,
+                timestamp: new Date().toISOString()
+            };
+            
+            const jsonData = JSON.stringify(data);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            
+            // إنشاء رابط تنزيل
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `investment_system_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // تنظيف
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 0);
+            
+            return true;
+        } catch (error) {
+            console.error('خطأ في نسخ البيانات احتياطياً:', error);
+            return false;
+        }
+    }
+    
+    // استعادة البيانات من نسخة احتياطية
+    async restoreData(file) {
+        try {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        // التحقق من صحة البيانات
+                        if (!data.investors || !data.transactions || !data.profits) {
+                            reject('ملف النسخة الاحتياطية غير صالح');
+                            return;
+                        }
+                        
+                        // استعادة البيانات
+                        localStorage.setItem(this.KEYS.INVESTORS, JSON.stringify(data.investors));
+                        localStorage.setItem(this.KEYS.TRANSACTIONS, JSON.stringify(data.transactions));
+                        localStorage.setItem(this.KEYS.PROFITS, JSON.stringify(data.profits));
+                        
+                        // استعادة الإعدادات إذا وجدت
+                        if (data.config) {
+                            Object.assign(SYSTEM_CONFIG, data.config);
+                            saveSystemConfig();
+                        }
+                        
+                        resolve(true);
+                    } catch (error) {
+                        console.error('خطأ في تحليل ملف النسخة الاحتياطية:', error);
+                        reject('خطأ في تحليل ملف النسخة الاحتياطية');
+                    }
+                };
+                
+                reader.onerror = () => {
+                    reject('خطأ في قراءة الملف');
+                };
+                
+                reader.readAsText(file);
+            });
+        } catch (error) {
+            console.error('خطأ في استعادة البيانات:', error);
+            throw error;
+        }
     }
 }
 
-// إنشاء نسخة واحدة من قاعدة البيانات
+// إنشاء كائن قاعدة البيانات
 const db = new Database();

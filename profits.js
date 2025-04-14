@@ -1,137 +1,380 @@
 /**
- * نظام الاستثمار المتكامل - مدير الأرباح
- * يتعامل مع إدارة أرباح المستثمرين وعرضها في واجهة المستخدم
+ * نظام الاستثمار المتكامل - إدارة الأرباح
+ * يتحكم في وظائف صفحة الأرباح، بما في ذلك حساب الأرباح المستحقة ودفعها للمستثمرين
  */
 
 class ProfitsManager {
     constructor() {
-        // تهيئة المدير
+        // عناصر واجهة المستخدم
+        this.profitsTable = document.getElementById('profits-table').querySelector('tbody');
+        this.payProfitsBtn = document.getElementById('pay-profits-btn');
+        this.payProfitModal = document.getElementById('pay-profit-modal');
+        this.confirmPayProfitBtn = document.getElementById('confirm-pay-profit');
+        this.profitInvestorSelect = document.getElementById('profit-investor');
+        this.profitDetails = document.getElementById('profit-details');
+        
+        // البيانات
+        this.profits = [];
+        this.investors = [];
+        this.transactions = [];
+        this.filter = 'current'; // current, pending, paid
+        this.dueProfits = [];
+        this.selectedProfitId = null;
+        
+        // تهيئة صفحة الأرباح
         this.initialize();
     }
     
-    // تهيئة المدير
-    initialize() {
-        // ربط نماذج الأرباح
-        this.bindForms();
+    // تهيئة صفحة الأرباح
+    async initialize() {
+        // تحميل البيانات
+        await this.loadData();
         
-        // إضافة مستمعي الأحداث
-        this.setupEventListeners();
+        // حساب الأرباح المستحقة
+        this.calculateDueProfits();
         
         // عرض جدول الأرباح
         this.renderProfitsTable();
         
-        console.log('تم تهيئة مدير الأرباح');
+        // تحديث قائمة المستثمرين في نموذج دفع الأرباح
+        this.updateProfitInvestorsSelect();
+        
+        // إعداد المستمعين للأحداث
+        this.setupEventListeners();
     }
     
-    // ربط نماذج الأرباح
-    bindForms() {
-        // نموذج دفع الأرباح
-        this.profitForm = document.getElementById('pay-profit-form');
-        this.profitInvestorSelect = document.getElementById('profit-investor');
-        this.profitDetails = document.getElementById('profit-details');
-        this.confirmPayProfitBtn = document.getElementById('confirm-pay-profit');
+    // تحميل البيانات
+    async loadData() {
+        this.profits = db.getAllProfits();
+        this.investors = db.getAllInvestors();
+        this.transactions = db.getAllTransactions();
     }
     
-    // إضافة مستمعي الأحداث
-    setupEventListeners() {
-        // إضافة مستمعي الأحداث لنموذج دفع الأرباح
-        if (this.profitInvestorSelect) {
-            this.profitInvestorSelect.addEventListener('change', () => this.calculateProfitForInvestor());
+    // حساب الأرباح المستحقة
+    calculateDueProfits() {
+        this.dueProfits = [];
+        
+        // الحصول على المستثمرين النشطين
+        const activeInvestors = this.investors.filter(investor => 
+            investor.status === INVESTOR_STATUS.ACTIVE && investor.amount > 0
+        );
+        
+        // تاريخ اليوم
+        const today = new Date();
+        
+        activeInvestors.forEach(investor => {
+            // تاريخ بداية الاستثمار
+            let startDate = new Date(investor.depositDate || investor.createdAt);
+            
+            // الأرباح المدفوعة سابقاً لهذا المستثمر
+            const paidProfits = this.profits.filter(profit => 
+                profit.investorId === investor.id && 
+                profit.status === PROFIT_STATUS.PAID
+            );
+            
+            // إذا كانت هناك أرباح مدفوعة، نستخدم تاريخ آخر دفعة كبداية
+            if (paidProfits.length > 0) {
+                // ترتيب الأرباح حسب تاريخ الانتهاء (الأحدث أولاً)
+                paidProfits.sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+                
+                // استخدام تاريخ نهاية آخر دفعة كبداية للفترة الجديدة
+                startDate = new Date(paidProfits[0].endDate);
+            }
+            
+            // عدد الأيام منذ آخر دفعة أو بداية الاستثمار
+            const daysSinceLastPayment = daysBetween(startDate, today);
+            
+            // إذا مرت فترة كافية (حسب دورة الأرباح)
+            if (daysSinceLastPayment >= SYSTEM_CONFIG.profitCycle) {
+                // تاريخ نهاية الفترة (بعد دورة الأرباح)
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + SYSTEM_CONFIG.profitCycle);
+                
+                // حساب مبلغ الربح
+                const profitAmount = calculateProfit(
+                    investor.amount, 
+                    SYSTEM_CONFIG.profitCycle, 
+                    SYSTEM_CONFIG.interestRate
+                );
+                
+                // إضافة الربح المستحق
+                this.dueProfits.push({
+                    id: generateId('pft'),
+                    investorId: investor.id,
+                    investorName: investor.name,
+                    amount: profitAmount,
+                    investmentAmount: investor.amount,
+                    startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString(),
+                    dueDate: endDate.toISOString(),
+                    days: SYSTEM_CONFIG.profitCycle,
+                    status: PROFIT_STATUS.PENDING,
+                    createdAt: new Date().toISOString()
+                });
+            }
+        });
+    }
+    
+    // عرض جدول الأرباح
+    renderProfitsTable() {
+        let profitsToShow = [];
+        
+        // تصفية الأرباح حسب الحالة المحددة
+        if (this.filter === 'current') {
+            // الشهر الحالي
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            // دمج الأرباح المسجلة والأرباح المستحقة
+            profitsToShow = [
+                ...this.profits.filter(profit => {
+                    const profitDate = new Date(profit.createdAt);
+                    return profitDate.getMonth() === currentMonth && 
+                           profitDate.getFullYear() === currentYear;
+                }),
+                ...this.dueProfits
+            ];
+        } else if (this.filter === 'pending') {
+            profitsToShow = [
+                ...this.profits.filter(profit => profit.status === PROFIT_STATUS.PENDING),
+                ...this.dueProfits
+            ];
+        } else if (this.filter === 'paid') {
+            profitsToShow = this.profits.filter(profit => profit.status === PROFIT_STATUS.PAID);
         }
         
-        if (this.confirmPayProfitBtn) {
-            this.confirmPayProfitBtn.addEventListener('click', () => this.payProfit());
-        }
+        // ترتيب الأرباح حسب تاريخ الاستحقاق (الأقرب أولاً)
+        profitsToShow.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
         
-        // مستمع حدث تحديث البيانات
-        document.addEventListener('data:updated', () => {
-            this.renderProfitsTable();
-            this.populateInvestorSelects();
+        // إفراغ الجدول
+        this.profitsTable.innerHTML = '';
+        
+        // إضافة صفوف الأرباح
+        profitsToShow.forEach(profit => {
+            // الحصول على معلومات المستثمر
+            const investor = this.investors.find(inv => inv.id === profit.investorId) || { 
+                name: profit.investorName || 'غير معروف'
+            };
+            
+            // تحديد حالة الربح
+            let statusClass = profit.status === PROFIT_STATUS.PAID ? 'success' : 'warning';
+            let statusText = profit.status;
+            
+            // حساب الفترة بين تاريخ الاستحقاق واليوم
+            const dueDate = new Date(profit.dueDate);
+            const today = new Date();
+            const daysToMaturity = daysBetween(today, dueDate);
+            
+            // تحديد تلميح تاريخ الاستحقاق
+            let dueIndicator = '';
+            
+            if (profit.status === PROFIT_STATUS.PENDING) {
+                if (dueDate <= today) {
+                    dueIndicator = '<span class="profit-due-indicator today"></span>';
+                    statusText = 'مستحق اليوم';
+                    statusClass = 'danger';
+                } else if (daysToMaturity <= SYSTEM_CONFIG.reminderDays) {
+                    dueIndicator = '<span class="profit-due-indicator upcoming"></span>';
+                    statusText = `مستحق خلال ${daysToMaturity} يوم`;
+                    statusClass = 'warning';
+                }
+            }
+            
+            // إنشاء الصف
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="investor-info">
+                        <div class="investor-avatar">${investor.name.charAt(0)}</div>
+                        <div>
+                            <div class="investor-name">${investor.name}</div>
+                            <div class="investor-id">${investor.id}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${formatCurrency(profit.investmentAmount)} ${SYSTEM_CONFIG.currency}</td>
+                <td>${formatDate(profit.startDate)}</td>
+                <td>${profit.days} يوم</td>
+                <td class="positive">${formatCurrency(profit.amount)} ${SYSTEM_CONFIG.currency}</td>
+                <td>
+                    <div class="profit-due-date">
+                        ${dueIndicator}
+                        <span>${formatDate(profit.dueDate)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="investor-actions">
+                        ${profit.status === PROFIT_STATUS.PENDING ? `
+                            <button class="investor-action-btn success pay-profit" data-id="${profit.id}">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </button>
+                        ` : `
+                            <span class="badge badge-${statusClass.toLowerCase()}">${statusText}</span>
+                        `}
+                    </div>
+                </td>
+            `;
+            
+            this.profitsTable.appendChild(row);
         });
         
-        // إضافة مستمعي الأحداث لأزرار فتح النوافذ المنبثقة
-        const payProfitsBtn = document.getElementById('pay-profits-btn');
-        
-        if (payProfitsBtn) {
-            payProfitsBtn.addEventListener('click', () => this.openPayProfitModal());
+        // إذا لم تكن هناك أرباح، نظهر رسالة
+        if (profitsToShow.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `
+                <td colspan="7" class="text-center">لا توجد أرباح مستحقة</td>
+            `;
+            this.profitsTable.appendChild(emptyRow);
         }
+    }
+    
+    // تحديث قائمة المستثمرين في نموذج دفع الأرباح
+    updateProfitInvestorsSelect() {
+        // إفراغ القائمة
+        this.profitInvestorSelect.innerHTML = '<option value="">اختر المستثمر</option>';
         
-        // إضافة مستمع للنقر على أزرار دفع الأرباح في جدول الأرباح
-        document.addEventListener('click', (e) => {
-            const payProfitBtn = e.target.closest('.pay-profit-btn');
-            
-            if (payProfitBtn) {
-                const investorId = payProfitBtn.getAttribute('data-id');
-                
-                if (investorId) {
-                    this.openPayProfitModalForInvestor(investorId);
+        // الحصول على المستثمرين الذين لديهم أرباح مستحقة
+        const investorsWithProfits = [];
+        
+        // جمع المستثمرين من الأرباح المسجلة
+        this.profits.forEach(profit => {
+            if (profit.status === PROFIT_STATUS.PENDING) {
+                const investor = this.investors.find(inv => inv.id === profit.investorId);
+                if (investor && !investorsWithProfits.some(inv => inv.id === investor.id)) {
+                    investorsWithProfits.push(investor);
                 }
             }
         });
-    }
-    
-    // فتح نافذة دفع الأرباح
-    openPayProfitModal() {
-        const modal = document.getElementById('pay-profit-modal');
-        if (modal) {
-            // إعادة تعيين النموذج
-            if (this.profitForm) {
-                this.profitForm.reset();
-            }
-            
-            // تحديث قوائم المستثمرين
-            this.populateInvestorSelects();
-            
-            // مسح تفاصيل الأرباح
-            if (this.profitDetails) {
-                this.profitDetails.innerHTML = '';
-            }
-            
-            // فتح النافذة
-            modal.classList.add('active');
-        }
-    }
-    
-    // فتح نافذة دفع الأرباح لمستثمر محدد
-    openPayProfitModalForInvestor(investorId) {
-        const modal = document.getElementById('pay-profit-modal');
-        if (modal && this.profitInvestorSelect) {
-            // تعيين المستثمر المحدد
-            this.profitInvestorSelect.value = investorId;
-            
-            // حساب الأرباح للمستثمر
-            this.calculateProfitForInvestor();
-            
-            // فتح النافذة
-            modal.classList.add('active');
-        }
-    }
-    
-    // ملء قوائم اختيار المستثمرين
-    populateInvestorSelects() {
-        // الحصول على المستثمرين
-        const investors = db.getAllInvestors();
         
-        // ترتيب المستثمرين أبجديًا
-        const sortedInvestors = [...investors].sort((a, b) => a.name.localeCompare(b.name));
+        // جمع المستثمرين من الأرباح المستحقة
+        this.dueProfits.forEach(profit => {
+            const investor = this.investors.find(inv => inv.id === profit.investorId);
+            if (investor && !investorsWithProfits.some(inv => inv.id === investor.id)) {
+                investorsWithProfits.push(investor);
+            }
+        });
         
-        // ملء قائمة الأرباح
-        if (this.profitInvestorSelect) {
-            this.profitInvestorSelect.innerHTML = '<option value="">اختر المستثمر</option>';
-            
-            sortedInvestors.forEach(investor => {
-                const option = document.createElement('option');
-                option.value = investor.id;
-                option.textContent = `${investor.name} (${investor.phone})`;
-                this.profitInvestorSelect.appendChild(option);
+        // ترتيب المستثمرين حسب الاسم
+        investorsWithProfits.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // إضافة المستثمرين إلى القائمة
+        investorsWithProfits.forEach(investor => {
+            const option = document.createElement('option');
+            option.value = investor.id;
+            option.textContent = `${investor.name} (${investor.phone})`;
+            this.profitInvestorSelect.appendChild(option);
+        });
+    }
+    
+    // إعداد المستمعين للأحداث
+    setupEventListeners() {
+        // الاستماع لتغيير الصفحة
+        document.addEventListener('page:change', (e) => {
+            if (e.detail.page === 'profits') {
+                this.refresh();
+            }
+        });
+        
+        // فتح نافذة دفع الأرباح
+        this.payProfitsBtn.addEventListener('click', () => {
+            this.openPayProfitModal();
+        });
+        
+        // تأكيد دفع الأرباح
+        this.confirmPayProfitBtn.addEventListener('click', () => {
+            this.payProfit();
+        });
+        
+        // إغلاق النوافذ المنبثقة عند النقر على زر الإغلاق
+        document.querySelectorAll('.modal-close, .modal-close-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.modal-overlay').forEach(modal => {
+                    modal.classList.remove('active');
+                });
             });
+        });
+        
+        // تصفية الأرباح حسب الحالة
+        document.querySelectorAll('.btn-group button').forEach(button => {
+            button.addEventListener('click', () => {
+                // تحديث الزر النشط
+                document.querySelectorAll('.btn-group button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+                
+                // تحديث نوع التصفية
+                const filterText = button.textContent.trim().toLowerCase();
+                if (filterText.includes('الشهر الحالي')) {
+                    this.filter = 'current';
+                } else if (filterText.includes('قيد الانتظار')) {
+                    this.filter = 'pending';
+                } else if (filterText.includes('مدفوعة')) {
+                    this.filter = 'paid';
+                }
+                
+                // تحديث الجدول
+                this.renderProfitsTable();
+            });
+        });
+        
+        // دفع الأرباح من الجدول
+        this.profitsTable.addEventListener('click', (e) => {
+            const payBtn = e.target.closest('.pay-profit');
+            
+            if (payBtn) {
+                const profitId = payBtn.getAttribute('data-id');
+                this.openPayProfitModalWithProfit(profitId);
+            }
+        });
+        
+        // تغيير المستثمر في نموذج دفع الأرباح
+        this.profitInvestorSelect.addEventListener('change', () => {
+            this.showInvestorProfitDetails();
+        });
+    }
+    
+    // فتح نافذة دفع الأرباح العامة
+    openPayProfitModal(investorId = null) {
+        // إعادة تعيين النموذج
+        this.profitDetails.innerHTML = '';
+        this.selectedProfitId = null;
+        
+        // إذا تم تحديد مستثمر، نحدده في القائمة
+        if (investorId) {
+            this.profitInvestorSelect.value = investorId;
+            this.showInvestorProfitDetails();
+        }
+        
+        // عرض النافذة المنبثقة
+        this.payProfitModal.classList.add('active');
+    }
+    
+    // فتح نافذة دفع الأرباح لربح محدد
+    openPayProfitModalWithProfit(profitId) {
+        // البحث عن الربح في الأرباح المسجلة
+        let profit = this.profits.find(p => p.id === profitId);
+        
+        // إذا لم يتم العثور عليه، نبحث في الأرباح المستحقة
+        if (!profit) {
+            profit = this.dueProfits.find(p => p.id === profitId);
+        }
+        
+        if (profit) {
+            // تحديد المستثمر في القائمة
+            this.profitInvestorSelect.value = profit.investorId;
+            
+            // عرض تفاصيل الربح
+            this.selectedProfitId = profitId;
+            this.showInvestorProfitDetails();
+            
+            // عرض النافذة المنبثقة
+            this.payProfitModal.classList.add('active');
         }
     }
     
-    // حساب الأرباح لمستثمر محدد
-    calculateProfitForInvestor() {
-        if (!this.profitInvestorSelect || !this.profitDetails) return;
-        
+    // عرض تفاصيل أرباح المستثمر المحدد
+    showInvestorProfitDetails() {
         const investorId = this.profitInvestorSelect.value;
         
         if (!investorId) {
@@ -140,242 +383,202 @@ class ProfitsManager {
         }
         
         // الحصول على المستثمر
-        const investor = db.getInvestor(investorId);
+        const investor = this.investors.find(inv => inv.id === investorId);
         
         if (!investor) {
-            this.profitDetails.innerHTML = '<p>لم يتم العثور على بيانات المستثمر</p>';
+            this.profitDetails.innerHTML = '<div class="alert alert-danger">لم يتم العثور على المستثمر</div>';
             return;
         }
         
-        // حساب الأرباح لكل استثمار
-        let totalProfit = 0;
-        let profitBreakdown = `
-            <div class="section">
-                <h3 class="section-title">تفاصيل الأرباح</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>المبلغ</th>
-                            <th>تاريخ الإيداع</th>
-                            <th>أيام الاستثمار</th>
-                            <th>الربح</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        // جمع أرباح المستثمر (المسجلة والمستحقة)
+        let investorProfits = [
+            ...this.profits.filter(p => p.investorId === investorId && p.status === PROFIT_STATUS.PENDING),
+            ...this.dueProfits.filter(p => p.investorId === investorId)
+        ];
         
-        investor.investments.forEach(inv => {
-            const start = new Date(inv.date);
-            const today = new Date();
-            const days = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
-            const profit = calculateProfit(inv.amount, days);
+        // ترتيب الأرباح حسب تاريخ الاستحقاق (الأقدم أولاً)
+        investorProfits.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+        
+        // إذا تم تحديد ربح معين، نضع علامة عليه
+        if (this.selectedProfitId) {
+            investorProfits = investorProfits.map(p => ({
+                ...p,
+                selected: p.id === this.selectedProfitId
+            }));
+        }
+        
+        // حساب إجمالي الأرباح المستحقة
+        const totalDueProfits = investorProfits.reduce((sum, profit) => sum + Number(profit.amount), 0);
+        
+        // إنشاء محتوى تفاصيل الربح
+        if (investorProfits.length === 0) {
+            this.profitDetails.innerHTML = '<div class="alert alert-info">لا توجد أرباح مستحقة لهذا المستثمر</div>';
+            return;
+        }
+        
+        this.profitDetails.innerHTML = `
+            <div class="alert alert-info mb-4">
+                <div class="alert-title">معلومات المستثمر</div>
+                <div class="alert-content">
+                    <div class="detail-item">
+                        <div class="detail-label">المستثمر</div>
+                        <div class="detail-value">${investor.name}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">الرصيد الحالي</div>
+                        <div class="detail-value">${formatCurrency(investor.amount)} ${SYSTEM_CONFIG.currency}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">إجمالي الأرباح المستحقة</div>
+                        <div class="detail-value positive">${formatCurrency(totalDueProfits)} ${SYSTEM_CONFIG.currency}</div>
+                    </div>
+                </div>
+            </div>
             
-            totalProfit += profit;
-            profitBreakdown += `
-                <tr>
-                    <td>${formatCurrency(inv.amount)} ${SYSTEM_CONFIG.currency}</td>
-                    <td>${formatDate(inv.date)}</td>
-                    <td>${days} يوم</td>
-                    <td>${formatCurrency(profit)} ${SYSTEM_CONFIG.currency}</td>
-                </tr>
-            `;
-        });
-        
-        profitBreakdown += `
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3"><strong>إجمالي الربح</strong></td>
-                            <td><strong>${formatCurrency(totalProfit)} ${SYSTEM_CONFIG.currency}</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
+            <div class="profit-items mb-4">
+                <h4>الأرباح المستحقة</h4>
+                <div class="mini-table-container">
+                    <table class="mini-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>الفترة</th>
+                                <th>المبلغ المستثمر</th>
+                                <th>عدد الأيام</th>
+                                <th>الربح المستحق</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${investorProfits.map((profit, index) => `
+                                <tr class="${profit.selected ? 'selected' : ''}">
+                                    <td>
+                                        <div class="form-check">
+                                            <input type="radio" name="profit-item" id="profit-${index}" value="${profit.id}" ${profit.selected ? 'checked' : ''}>
+                                            <label for="profit-${index}"></label>
+                                        </div>
+                                    </td>
+                                    <td>${formatDate(profit.startDate)} - ${formatDate(profit.endDate)}</td>
+                                    <td>${formatCurrency(profit.investmentAmount)} ${SYSTEM_CONFIG.currency}</td>
+                                    <td>${profit.days} يوم</td>
+                                    <td class="positive">${formatCurrency(profit.amount)} ${SYSTEM_CONFIG.currency}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="form-group mb-4">
+                <label class="form-label">طريقة الدفع</label>
+                <select class="form-select" id="payment-method" required>
+                    <option value="cash">نقدًا</option>
+                    <option value="bank">تحويل بنكي</option>
+                    <option value="wallet">محفظة إلكترونية</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">ملاحظات</label>
+                <textarea class="form-input" id="profit-notes" rows="3" placeholder="أي ملاحظات إضافية حول عملية دفع الأرباح"></textarea>
             </div>
         `;
         
-        this.profitDetails.innerHTML = profitBreakdown;
+        // إضافة مستمع الأحداث للخيارات
+        this.profitDetails.querySelectorAll('input[name="profit-item"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                this.selectedProfitId = radio.value;
+                
+                // تحديث الصفوف المحددة
+                this.profitDetails.querySelectorAll('tbody tr').forEach(row => {
+                    row.classList.remove('selected');
+                });
+                
+                radio.closest('tr').classList.add('selected');
+            });
+        });
     }
     
     // دفع الأرباح
     payProfit() {
-        if (!this.profitInvestorSelect) {
-            showNotification('خطأ في النموذج: لم يتم العثور على عنصر اختيار المستثمر', 'error');
-            return;
-        }
-        
         const investorId = this.profitInvestorSelect.value;
         
         if (!investorId) {
-            showNotification('الرجاء اختيار مستثمر', 'error');
+            this.showNotification('الرجاء اختيار مستثمر', 'warning');
             return;
         }
         
-        // الحصول على المستثمر
-        const investor = db.getInvestor(investorId);
+        // التحقق من اختيار ربح
+        const selectedProfit = this.profitDetails.querySelector('input[name="profit-item"]:checked');
         
-        if (!investor) {
-            showNotification('لم يتم العثور على بيانات المستثمر', 'error');
+        if (!selectedProfit && !this.selectedProfitId) {
+            this.showNotification('الرجاء اختيار ربح للدفع', 'warning');
             return;
         }
         
-        // حساب الأرباح لكل استثمار
-        let totalProfit = 0;
-        investor.investments.forEach(inv => {
-            const start = new Date(inv.date);
-            const today = new Date();
-            const days = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
-            const profit = calculateProfit(inv.amount, days);
-            totalProfit += profit;
-        });
+        const profitId = selectedProfit ? selectedProfit.value : this.selectedProfitId;
         
-        // إضافة ربح جديد
-        const profit = db.addProfit({
-            investorId,
-            amount: totalProfit,
-            startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            endDate: new Date().toISOString(),
-            dueDate: new Date().toISOString(),
-            investmentAmount: investor.amount,
-            days: 30,
-            status: PROFIT_STATUS.PENDING
-        });
+        // البحث عن الربح في الأرباح المسجلة
+        let profit = this.profits.find(p => p.id === profitId);
+        let isNewProfit = false;
         
-        if (profit) {
-            // تحديث حالة الربح إلى مدفوعة
-            db.updateProfitStatus(profit.id, PROFIT_STATUS.PAID);
+        // إذا لم يتم العثور عليه، نبحث في الأرباح المستحقة
+        if (!profit) {
+            profit = this.dueProfits.find(p => p.id === profitId);
+            isNewProfit = true;
+        }
+        
+        if (!profit) {
+            this.showNotification('لم يتم العثور على الربح المحدد', 'danger');
+            return;
+        }
+        
+        // جمع بيانات الدفع
+        const paymentMethod = document.getElementById('payment-method').value;
+        const notes = document.getElementById('profit-notes').value.trim();
+        
+        // إذا كان ربحًا جديدًا، نضيفه إلى قاعدة البيانات
+        if (isNewProfit) {
+            profit = db.addProfit(profit);
+        }
+        
+        // تحديث حالة الربح إلى "مدفوع"
+        const updatedProfit = db.updateProfitStatus(profit.id, PROFIT_STATUS.PAID);
+        
+        if (updatedProfit) {
+            // عرض رسالة نجاح
+            this.showNotification('تم دفع الأرباح بنجاح', 'success');
+            
+            // تحديث البيانات
+            this.refresh();
             
             // إغلاق النافذة المنبثقة
-            const modal = document.getElementById('pay-profit-modal');
-            if (modal) {
-                modal.classList.remove('active');
-            }
-            
-            // تحديث الواجهة
-            this.renderProfitsTable();
-            
-            // تحديث بيانات الواجهة الأخرى
-            if (window.app) {
-                window.app.updateDashboard();
-            }
-            
-            // عرض إشعار النجاح
-            showNotification(`تم دفع الأرباح بمبلغ ${formatCurrency(totalProfit)} ${SYSTEM_CONFIG.currency} للمستثمر ${investor.name} بنجاح!`, 'success');
+            this.payProfitModal.classList.remove('active');
         } else {
-            showNotification('حدث خطأ أثناء دفع الأرباح', 'error');
+            // عرض رسالة خطأ
+            this.showNotification('حدث خطأ أثناء عملية دفع الأرباح', 'danger');
         }
     }
     
-    // عرض جدول الأرباح
-    renderProfitsTable() {
-        const tableBody = document.querySelector('#profits-table tbody');
-        if (!tableBody) return;
-        
-        // الحصول على المستثمرين
-        const investors = db.getAllInvestors();
-        
-        // إعداد قائمة الأرباح المستحقة لكل مستثمر
-        const profitsList = [];
-        
-        investors.forEach(investor => {
-            if (!investor.investments || investor.investments.length === 0) return;
-            
-            const totalInvestment = investor.amount || 0;
-            if (totalInvestment <= 0) return;
-            
-            // اختيار أقدم تاريخ استثمار
-            const oldestInvestment = investor.investments.reduce((oldest, current) => {
-                const oldestDate = oldest ? new Date(oldest.date) : new Date();
-                const currentDate = new Date(current.date);
-                return currentDate < oldestDate ? current : oldest;
-            }, null);
-            
-            if (!oldestInvestment) return;
-            
-            const investmentDate = oldestInvestment.date;
-            const today = new Date();
-            const investmentStartDate = new Date(investmentDate);
-            
-            // حساب عدد أيام الاستثمار
-            const days = Math.floor((today - investmentStartDate) / (1000 * 60 * 60 * 24));
-            
-            // حساب الربح المستحق
-            const profit = investor.investments.reduce((total, inv) => {
-                const invDays = Math.floor((today - new Date(inv.date)) / (1000 * 60 * 60 * 24));
-                return total + calculateProfit(inv.amount, invDays);
-            }, 0);
-            
-            // تقدير تاريخ الاستحقاق (بعد 30 يوم من تاريخ الاستثمار)
-            const dueDate = new Date(investmentStartDate);
-            dueDate.setDate(dueDate.getDate() + SYSTEM_CONFIG.profitCycle);
-            
-            profitsList.push({
-                investor: investor,
-                investmentAmount: totalInvestment,
-                investmentDate: investmentDate,
-                days: days,
-                profit: profit,
-                dueDate: dueDate
-            });
-        });
-        
-        // ترتيب الأرباح حسب تاريخ الاستحقاق (الأقرب أولاً)
-        profitsList.sort((a, b) => a.dueDate - b.dueDate);
-        
-        // تفريغ الجدول
-        tableBody.innerHTML = '';
-        
-        // عرض الأرباح في الجدول
-        if (profitsList.length > 0) {
-            profitsList.forEach(item => {
-                // تحديد حالة استحقاق الربح
-                const today = new Date();
-                const isDue = item.dueDate <= today;
-                const daysToMaturity = Math.floor((item.dueDate - today) / (1000 * 60 * 60 * 24));
-                
-                let dueBadge = '';
-                if (isDue) {
-                    dueBadge = '<span class="badge badge-danger">مستحق الآن</span>';
-                } else if (daysToMaturity <= SYSTEM_CONFIG.reminderDays) {
-                    dueBadge = `<span class="badge badge-warning">بعد ${daysToMaturity} يوم</span>`;
-                }
-                
-                // إنشاء الصف
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>
-                        <div class="investor-info">
-                            <div class="investor-avatar">${item.investor.name.charAt(0)}</div>
-                            <div>
-                                <div class="investor-name">${item.investor.name}</div>
-                                <div class="investor-id">${item.investor.phone}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>${formatCurrency(item.investmentAmount)} ${SYSTEM_CONFIG.currency}</td>
-                    <td>${formatDate(item.investmentDate)}</td>
-                    <td>${item.days} يوم</td>
-                    <td>${formatCurrency(item.profit)} ${SYSTEM_CONFIG.currency}</td>
-                    <td>${formatDate(item.dueDate)} ${dueBadge}</td>
-                    <td>
-                        <button class="btn btn-success btn-sm pay-profit-btn" data-id="${item.investor.id}">
-                            <i class="fas fa-coins"></i>
-                            <span>دفع الأرباح</span>
-                        </button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
+    // عرض إشعار
+    showNotification(message, type = 'success') {
+        // استدعاء وظيفة الإشعارات العامة
+        if (window.notifications) {
+            window.notifications.show(message, type);
         } else {
-            // عرض رسالة فارغة
-            const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = '<td colspan="7" class="text-center">لا يوجد أرباح مستحقة</td>';
-            tableBody.appendChild(emptyRow);
+            alert(message);
         }
+    }
+    
+    // تحديث صفحة الأرباح
+    async refresh() {
+        await this.loadData();
+        this.calculateDueProfits();
+        this.renderProfitsTable();
+        this.updateProfitInvestorsSelect();
     }
 }
 
-// إنشاء مدير الأرباح عند تحميل الصفحة
+// إنشاء كائن إدارة الأرباح عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
     window.profitsManager = new ProfitsManager();
 });

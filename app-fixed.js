@@ -337,73 +337,7 @@ function setCurrentDateAsDefault() {
     console.log('تم تعيين التاريخ الحالي لجميع حقول التاريخ');
 }
 
-// إضافة مستثمر جديد
-function addNewInvestor() {
-    console.log('إضافة مستثمر جديد...');
-    
-    const nameInput = document.getElementById('investor-name');
-    const phoneInput = document.getElementById('investor-phone');
-    const addressInput = document.getElementById('investor-address');
-    const cardInput = document.getElementById('investor-card');
-    const depositDateInput = document.getElementById('investor-deposit-date');
-    const amountInput = document.getElementById('investor-amount');
 
-    if (!nameInput || !phoneInput || !addressInput || !cardInput || !depositDateInput || !amountInput) {
-        showNotification('خطأ في النموذج: بعض الحقول المطلوبة غير موجودة', 'error');
-        return;
-    }
-
-    const name = nameInput.value;
-    const phone = phoneInput.value;
-    const address = addressInput.value;
-    const cardNumber = cardInput.value;
-    const depositDate = depositDateInput.value;
-    const amount = parseFloat(amountInput.value);
-
-    if (!name || !phone || !address || !cardNumber || !depositDate || isNaN(amount) || amount <= 0) {
-        showNotification('يرجى إدخال جميع البيانات المطلوبة بشكل صحيح', 'error');
-        return;
-    }
-
-    const newInvestor = {
-        id: Date.now().toString(),
-        name,
-        phone,
-        address,
-        cardNumber,
-        joinDate: depositDate,
-        createdAt: new Date().toISOString(),
-        status: 'نشط',
-        investments: [
-            {
-                amount,
-                date: depositDate,
-                interest: calculateInterest(amount, depositDate)
-            }
-        ],
-        profits: [],
-        withdrawals: [],
-        // إضافة خاصية المبلغ الإجمالي لتسهيل الوصول
-        amount: amount
-    };
-
-    investors.push(newInvestor);
-
-    // إضافة عملية جديدة
-    addTransaction('إيداع', newInvestor.id, amount);
-
-    // تحديث واجهة المستخدم
-    saveData();
-    
-    // إطلاق حدث تحديث المستثمرين
-    document.dispatchEvent(new CustomEvent('investor:update'));
-    
-    // إغلاق النافذة المنبثقة
-    closeModal('add-investor-modal');
-    
-    // عرض إشعار النجاح
-    showNotification(`تمت إضافة المستثمر ${name} بنجاح!`, 'success');
-}
 
 // حساب الفائدة
 function calculateInterest(amount, startDate, endDate = null) {
@@ -1258,9 +1192,16 @@ function renderInvestorsTable() {
  * إصلاح آخر لمشكلة محتملة في إضافة مستثمر جديد
  */
 
-// إضافة مستثمر جديد
+/**
+ * إصلاح مشكلة عرض المبالغ المالية المزدوجة في نظام الاستثمار المتكامل
+ * 
+ * المشكلة: عند إضافة استثمار جديد، يظهر المبلغ مضاعفاً في تفاصيل المستثمر والعمليات
+ * الحل: تعديل الدوال المسؤولة عن إضافة المستثمرين والعمليات لمنع الإضافة المزدوجة للمبالغ
+ */
+
+// 1. تعديل دالة إضافة مستثمر جديد
 function addNewInvestor() {
-    console.log('إضافة مستثمر جديد...');
+    console.log('إضافة مستثمر جديد (بعد الإصلاح)...');
     
     const nameInput = document.getElementById('investor-name');
     const phoneInput = document.getElementById('investor-phone');
@@ -1307,16 +1248,17 @@ function addNewInvestor() {
         ],
         profits: [],
         withdrawals: [],
-        // إضافة خاصية المبلغ الإجمالي لتسهيل الوصول
-        amount: amount
+        // تعيين المبلغ الإجمالي مباشرة دون إضافته مرة أخرى
+        amount: amount // هذا هو المبلغ الأصلي الذي سيظهر في التفاصيل
     };
 
     investors.push(newInvestor);
 
-    // إضافة عملية جديدة
-    addTransaction('إيداع', newInvestor.id, amount);
+    // إضافة عملية جديدة بنوع "إيداع"
+    // تم تغيير الدالة لتجنب إضافة المبلغ مرة أخرى إلى رصيد المستثمر
+    addTransaction('إيداع', newInvestor.id, amount, '', true);
 
-    // تحديث واجهة المستخدم
+    // حفظ البيانات
     saveData();
     
     // إطلاق حدث تحديث المستثمرين
@@ -1328,6 +1270,467 @@ function addNewInvestor() {
     // عرض إشعار النجاح
     showNotification(`تمت إضافة المستثمر ${name} بنجاح!`, 'success');
 }
+
+// 2. تعديل دالة إضافة عملية جديدة لمنع الإضافة المزدوجة للمبالغ
+function addTransaction(type, investorId, amount, notes = '', isInitialDeposit = false) {
+    console.log(`إضافة عملية ${type} بقيمة ${amount} للمستثمر ${investorId}`);
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    if (!investor) {
+        console.error(`لم يتم العثور على المستثمر: ${investorId}`);
+        return null;
+    }
+    
+    // تحديد رصيد المستثمر بعد العملية
+    let balanceAfter = 0;
+    
+    // الفرق الرئيسي: إذا كانت هذه هي العملية الأولى (الإيداع الأولي)، لا نقوم بتحديث الرصيد
+    // لأننا قمنا بتعيينه بالفعل عند إنشاء المستثمر
+    if (type === 'إيداع' && !isInitialDeposit) {
+        // تحديث رصيد المستثمر في حالة الإيداع الجديد (ليس الإيداع الأولي)
+        investor.amount = (investor.amount || 0) + amount;
+        balanceAfter = investor.amount;
+    } else if (type === 'سحب') {
+        // تحديث رصيد المستثمر في حالة السحب
+        investor.amount = (investor.amount || 0) - amount;
+        balanceAfter = investor.amount;
+    } else {
+        // في حالة الأرباح أو الإيداع الأولي، لا نغير الرصيد الأساسي
+        balanceAfter = investor.amount || 0;
+    }
+    
+    const newTransaction = {
+        id: Date.now().toString(),
+        date: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+        type,
+        investorId,
+        investorName: investor ? investor.name : 'غير معروف',
+        amount,
+        balanceAfter,
+        notes
+    };
+    
+    transactions.push(newTransaction);
+    saveData();
+    
+    // إطلاق حدث تحديث العمليات
+    document.dispatchEvent(new CustomEvent('transaction:update'));
+    
+    return newTransaction;
+}
+
+// 3. تعديل دالة إضافة إيداع جديد لمستثمر موجود
+function addDeposit() {
+    console.log('إضافة إيداع جديد (بعد الإصلاح)...');
+    
+    const depositInvestorSelect = document.getElementById('deposit-investor');
+    const depositAmountInput = document.getElementById('deposit-amount');
+    const depositDateInput = document.getElementById('deposit-date');
+    const depositNotesInput = document.getElementById('deposit-notes');
+    
+    if (!depositInvestorSelect || !depositAmountInput || !depositDateInput) {
+        showNotification('خطأ في النموذج: بعض الحقول المطلوبة غير موجودة', 'error');
+        return;
+    }
+    
+    const investorId = depositInvestorSelect.value;
+    const amount = parseFloat(depositAmountInput.value);
+    const depositDate = depositDateInput.value;
+    const notes = depositNotesInput ? depositNotesInput.value || '' : '';
+    
+    if (!investorId || isNaN(amount) || amount <= 0 || !depositDate) {
+        showNotification('الرجاء إدخال جميع البيانات المطلوبة بشكل صحيح', 'error');
+        return;
+    }
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    if (!investor) {
+        showNotification('لم يتم العثور على بيانات المستثمر', 'error');
+        return;
+    }
+    
+    // إضافة الاستثمار الجديد إلى قائمة استثمارات المستثمر
+    investor.investments.push({
+        amount,
+        date: depositDate,
+        interest: calculateInterest(amount, depositDate),
+        notes
+    });
+    
+    // إضافة عملية جديدة - نمرر false لتمكين تحديث الرصيد
+    addTransaction('إيداع', investorId, amount, notes, false);
+    
+    saveData();
+    
+    // إغلاق النافذة المنبثقة
+    closeModal('add-deposit-modal');
+    
+    showNotification(`تم إضافة إيداع جديد بمبلغ ${formatCurrency(amount)} للمستثمر ${investor.name} بنجاح!`, 'success');
+}
+
+// 4. التأكد من صحة عرض تفاصيل المستثمر
+function showInvestorDetails(investorId) {
+    console.log(`عرض تفاصيل المستثمر (بعد الإصلاح): ${investorId}`);
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    if (!investor) {
+        showNotification('لم يتم العثور على المستثمر', 'error');
+        return;
+    }
+    
+    // استخدام القيمة الفعلية للمبلغ المستثمر
+    const totalInvestment = investor.amount || 0;
+    const monthlyProfit = investor.investments.reduce((total, inv) => {
+        return total + calculateInterest(inv.amount, inv.date);
+    }, 0);
+    
+    // حساب مدة الاستثمار
+    const startDate = new Date(investor.joinDate || investor.createdAt);
+    const today = new Date();
+    const daysPassed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+    
+    // الحصول على عمليات المستثمر
+    const investorTransactions = transactions.filter(tr => tr.investorId === investorId);
+    
+    // إنشاء محتوى النافذة المنبثقة
+    const content = `
+        <div class="investor-profile">
+            <div class="investor-avatar large">${investor.name.charAt(0)}</div>
+            <h2 class="investor-fullname">${investor.name}</h2>
+            <span class="badge badge-success">${investor.status || 'نشط'}</span>
+        </div>
+        
+        <div class="investor-stats">
+            <div class="stat-item">
+                <div class="stat-value">${formatCurrency(totalInvestment)}</div>
+                <div class="stat-label">إجمالي الاستثمار</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${formatCurrency(monthlyProfit)}</div>
+                <div class="stat-label">الربح الشهري</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${daysPassed} يوم</div>
+                <div class="stat-label">مدة الاستثمار</div>
+            </div>
+        </div>
+        
+        <div class="detail-group">
+            <h3 class="detail-group-title">معلومات الاتصال</h3>
+            <div class="detail-item">
+                <div class="detail-label">رقم الهاتف</div>
+                <div class="detail-value">${investor.phone}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">العنوان</div>
+                <div class="detail-value">${investor.address || 'غير محدد'}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">رقم البطاقة</div>
+                <div class="detail-value">${investor.cardNumber || 'غير محدد'}</div>
+            </div>
+        </div>
+        
+        <div class="detail-group">
+            <h3 class="detail-group-title">آخر العمليات</h3>
+            <div class="mini-table-container">
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>التاريخ</th>
+                            <th>النوع</th>
+                            <th>المبلغ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${investorTransactions.length > 0 ? 
+                            investorTransactions.slice(0, 5).map(tr => `
+                                <tr>
+                                    <td>${tr.date}</td>
+                                    <td>${tr.type}</td>
+                                    <td>${formatCurrency(tr.amount)}</td>
+                                </tr>
+                            `).join('') : 
+                            '<tr><td colspan="3">لا توجد عمليات</td></tr>'
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="investor-actions-big">
+            <button class="btn btn-primary" onclick="editInvestor('${investorId}')">
+                <i class="fas fa-edit"></i> تعديل البيانات
+            </button>
+            <button class="btn btn-success" onclick="openProfitModal('${investorId}')">
+                <i class="fas fa-coins"></i> دفع الأرباح
+            </button>
+            <button class="btn btn-danger" onclick="deleteInvestor('${investorId}')">
+                <i class="fas fa-trash"></i> حذف المستثمر
+            </button>
+        </div>
+    `;
+    
+    // عرض النافذة المنبثقة
+    showModal(`تفاصيل المستثمر - ${investor.name}`, content);
+}
+
+// 5. تصحيح طريقة عرض تفاصيل العمليات
+function showTransactionDetails(transactionId) {
+    console.log(`عرض تفاصيل العملية (بعد الإصلاح): ${transactionId}`);
+    
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) {
+        showNotification('لم يتم العثور على العملية', 'error');
+        return;
+    }
+    
+    const investor = investors.find(i => i.id === transaction.investorId);
+    const investorName = investor ? investor.name : transaction.investorName || 'غير معروف';
+    
+    let typeClass = '';
+    switch(transaction.type) {
+        case 'إيداع':
+            typeClass = 'success';
+            break;
+        case 'سحب':
+            typeClass = 'danger';
+            break;
+        case 'دفع أرباح':
+            typeClass = 'info';
+            break;
+        default:
+            typeClass = 'primary';
+    }
+    
+    // إنشاء محتوى النافذة المنبثقة
+    const content = `
+        <div class="transaction-details">
+            <div class="transaction-header">
+                <span class="badge badge-${typeClass}">${transaction.type}</span>
+                <span class="transaction-date">${transaction.date}</span>
+            </div>
+            <div class="transaction-body">
+                <div class="detail-item">
+                    <div class="detail-label">رقم العملية</div>
+                    <div class="detail-value">${transaction.id}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">المستثمر</div>
+                    <div class="detail-value">${investorName}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">نوع العملية</div>
+                    <div class="detail-value">${transaction.type}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">تاريخ العملية</div>
+                    <div class="detail-value">${transaction.date}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">المبلغ</div>
+                    <div class="detail-value">${formatCurrency(transaction.amount)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">الرصيد بعد العملية</div>
+                    <div class="detail-value">${transaction.balanceAfter ? formatCurrency(transaction.balanceAfter) : '-'}</div>
+                </div>
+                ${transaction.notes ? `
+                <div class="detail-item">
+                    <div class="detail-label">ملاحظات</div>
+                    <div class="detail-value">${transaction.notes}</div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // عرض النافذة المنبثقة
+    showModal('تفاصيل العملية', content);
+}
+
+// 6. نسخة محسنة من تهيئة التطبيق تقوم بإصلاح البيانات الموجودة
+function fixExistingData() {
+    console.log('إصلاح البيانات الموجودة...');
+    
+    // البحث عن المستثمرين الذين قد يكون لديهم مبالغ مضاعفة
+    let fixedCount = 0;
+    
+    investors.forEach(investor => {
+        // حساب إجمالي مبالغ الاستثمارات الفعلية
+        const totalInvestmentsAmount = investor.investments.reduce((sum, inv) => sum + inv.amount, 0);
+        
+        // حساب إجمالي عمليات الإيداع المرتبطة بالمستثمر
+        const totalDeposits = transactions
+            .filter(tr => tr.investorId === investor.id && tr.type === 'إيداع')
+            .reduce((sum, tr) => sum + tr.amount, 0);
+            
+        // حساب إجمالي عمليات السحب المرتبطة بالمستثمر
+        const totalWithdrawals = transactions
+            .filter(tr => tr.investorId === investor.id && tr.type === 'سحب')
+            .reduce((sum, tr) => sum + tr.amount, 0);
+        
+        // المبلغ الصحيح المفترض أن يكون للمستثمر (الإيداعات - السحوبات)
+        const correctAmount = totalDeposits - totalWithdrawals;
+        
+        // إذا كان الفرق كبير، نقوم بتصحيح المبلغ
+        if (Math.abs(investor.amount - correctAmount) > 1) {
+            console.log(`تصحيح مبلغ المستثمر ${investor.name} من ${investor.amount} إلى ${correctAmount}`);
+            investor.amount = correctAmount;
+            
+            // تحديث آخر عملية للمستثمر لتعكس الرصيد الصحيح
+            const lastTransaction = transactions
+                .filter(tr => tr.investorId === investor.id)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                
+            if (lastTransaction) {
+                lastTransaction.balanceAfter = correctAmount;
+            }
+            
+            fixedCount++;
+        }
+    });
+    
+    if (fixedCount > 0) {
+        saveData();
+        console.log(`تم إصلاح ${fixedCount} من سجلات المستثمرين`);
+        return true;
+    }
+    
+    return false;
+}
+
+// تطبيق الإصلاحات عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('تطبيق إصلاحات عرض المبالغ المزدوجة...');
+    
+    // استبدال الدوال الأصلية بالدوال المصححة
+    window.addNewInvestor = addNewInvestor;
+    window.addTransaction = addTransaction;
+    window.addDeposit = addDeposit;
+    window.showInvestorDetails = showInvestorDetails;
+    window.showTransactionDetails = showTransactionDetails;
+    
+    // محاولة إصلاح البيانات الموجودة
+    setTimeout(() => {
+        if (fixExistingData()) {
+            // تحديث واجهة المستخدم بعد إصلاح البيانات
+            updateDashboard();
+            renderInvestorsTable();
+            renderTransactionsTable();
+            renderProfitsTable();
+            renderRecentTransactions();
+            
+            showNotification('تم إصلاح المبالغ المضاعفة في البيانات', 'success');
+        }
+    }, 2000);
+});
+
+
+/**
+ * سكربت تصحيح أرصدة المستثمرين الموجودة
+ * يقوم هذا السكربت بالتحقق من صحة أرصدة المستثمرين الحاليين وتصحيحها
+ * لاستخدامه، انسخ الكود وألصقه في وحدة تحكم المتصفح (F12 ثم Console)
+ */
+
+(function() {
+    // دالة لتنسيق المبالغ المالية للعرض
+    function formatAmount(amount) {
+        if (amount === null || amount === undefined || isNaN(amount)) {
+            return "0";
+        }
+        return amount.toLocaleString();
+    }
+
+    // 1. عرض حالة البيانات الحالية
+    console.log("=== تشخيص مشكلة المبالغ المضاعفة ===");
+    console.log(`عدد المستثمرين: ${investors.length}`);
+    console.log(`عدد العمليات: ${transactions.length}`);
+
+    // 2. التحقق من كل مستثمر
+    const problemsFound = [];
+    
+    investors.forEach(investor => {
+        // حساب إجمالي الإيداعات
+        const totalDeposits = transactions
+            .filter(tr => tr.investorId === investor.id && tr.type === 'إيداع')
+            .reduce((sum, tr) => sum + tr.amount, 0);
+        
+        // حساب إجمالي السحوبات
+        const totalWithdrawals = transactions
+            .filter(tr => tr.investorId === investor.id && tr.type === 'سحب')
+            .reduce((sum, tr) => sum + tr.amount, 0);
+        
+        // الرصيد الفعلي المفترض
+        const expectedBalance = totalDeposits - totalWithdrawals;
+        
+        // مقارنة مع الرصيد المخزن للمستثمر
+        if (Math.abs(investor.amount - expectedBalance) > 1) {
+            problemsFound.push({
+                investorId: investor.id,
+                investorName: investor.name,
+                storedAmount: investor.amount,
+                expectedAmount: expectedBalance,
+                difference: investor.amount - expectedAmount
+            });
+        }
+    });
+
+    // 3. عرض المشاكل التي تم اكتشافها
+    if (problemsFound.length > 0) {
+        console.log(`تم اكتشاف ${problemsFound.length} من المشاكل في أرصدة المستثمرين:`);
+        console.table(problemsFound.map(p => ({
+            "المستثمر": p.investorName,
+            "المبلغ المخزن": formatAmount(p.storedAmount),
+            "المبلغ المتوقع": formatAmount(p.expectedAmount),
+            "الفرق": formatAmount(p.difference)
+        })));
+    } else {
+        console.log("لم يتم اكتشاف أي مشاكل في أرصدة المستثمرين");
+    }
+
+    // 4. السؤال عن رغبة المستخدم في تصحيح المشاكل
+    if (problemsFound.length > 0) {
+        const shouldFix = confirm(`تم اكتشاف ${problemsFound.length} من المشاكل في أرصدة المستثمرين. هل ترغب في تصحيح هذه المشاكل؟`);
+        
+        if (shouldFix) {
+            // 5. تصحيح المشاكل
+            let fixedCount = 0;
+            
+            problemsFound.forEach(problem => {
+                const investor = investors.find(inv => inv.id === problem.investorId);
+                if (investor) {
+                    investor.amount = problem.expectedAmount;
+                    
+                    // تحديث آخر عملية للمستثمر لتعكس الرصيد الصحيح
+                    const lastTransaction = transactions
+                        .filter(tr => tr.investorId === investor.id)
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                        
+                    if (lastTransaction) {
+                        lastTransaction.balanceAfter = problem.expectedAmount;
+                    }
+                    
+                    fixedCount++;
+                }
+            });
+            
+            // 6. حفظ البيانات
+            localStorage.setItem('investors', JSON.stringify(investors));
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            
+            console.log(`تم تصحيح ${fixedCount} من سجلات المستثمرين`);
+            alert(`تم تصحيح ${fixedCount} من سجلات المستثمرين. الرجاء تحديث الصفحة لتطبيق التغييرات.`);
+        }
+    }
+    
+    // 7. نصائح إضافية
+    console.log("=== نصائح إضافية ===");
+    console.log("1. قم بتحديث الصفحة بعد إجراء التصحيحات");
+    console.log("2. جرب إضافة مستثمر جديد للتأكد من أن المشكلة لم تعد موجودة");
+    console.log("3. قم بتنزيل نسخة احتياطية من البيانات بعد التصحيح");
+})();
 
 /**
  * إصلاح للتأكد من عدم استخدام خصائص undefined أثناء حساب الفائدة

@@ -339,33 +339,6 @@ function setCurrentDateAsDefault() {
 
 
 
-// حساب الفائدة
-function calculateInterest(amount, startDate, endDate = null) {
-    const rate = settings.interestRate / 100;
-    
-    // استخدام تاريخ نهاية محدد أو نهاية الشهر الحالي
-    const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : new Date(start.getFullYear(), start.getMonth() + 1, 0);
-    
-    // حساب عدد الأيام
-    const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    
-    // عدد الأيام في الشهر (أو الدورة)
-    const daysInCycle = settings.profitCycle;
-    
-    // حساب الفائدة حسب طريقة الحساب
-    let interest = 0;
-    
-    if (settings.profitCalculation === 'daily') {
-        // حساب الفائدة النسبية بالأيام
-        interest = (amount * rate * days) / daysInCycle;
-    } else {
-        // حساب الفائدة الشهرية كاملة
-        interest = amount * rate;
-    }
-    
-    return interest;
-}
 
 // الحصول على إجمالي الاستثمارات للمستثمر
 function getTotalInvestmentForInvestor(investorId) {
@@ -1736,7 +1709,13 @@ document.addEventListener('DOMContentLoaded', function() {
  * إصلاح للتأكد من عدم استخدام خصائص undefined أثناء حساب الفائدة
  */
 
-// حساب الفائدة
+/**
+ * تعديل نظام معالجة فائدة المبالغ المسحوبة
+ * عند سحب أي مبلغ من المبلغ الأصلي في أي وقت من الشهر
+ * يتم قطع فائدة هذا المبلغ من الشهر بالكامل
+ */
+
+// 1. تعديل دالة حساب الفائدة لتأخذ بعين الاعتبار السحوبات
 function calculateInterest(amount, startDate, endDate = null) {
     // التأكد من وجود القيم قبل استخدامها
     if (!amount || isNaN(amount) || amount <= 0) {
@@ -1749,9 +1728,9 @@ function calculateInterest(amount, startDate, endDate = null) {
 
     const rate = settings.interestRate / 100;
     
-    // استخدام تاريخ نهاية محدد أو نهاية الشهر الحالي
+    // استخدام تاريخ نهاية محدد أو تاريخ اليوم
     const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    const end = endDate ? new Date(endDate) : new Date();
     
     // حساب عدد الأيام
     const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
@@ -1773,58 +1752,571 @@ function calculateInterest(amount, startDate, endDate = null) {
     return interest;
 }
 
-/**
- * إضافة دالة تهيئة افتراضية لبيانات المستثمر
- * إذا لم تكن موجودة
- */
-
-// إضافة بيانات افتراضية للتطبيق إذا كان فارغاً
-function initializeDefaultData() {
-    console.log('تهيئة البيانات الافتراضية...');
+// 2. تعديل دالة سحب المبلغ لقطع الفائدة
+function withdrawAmount() {
+    console.log('سحب مبلغ...');
     
-    // إضافة مستثمر افتراضي إذا لم يكن هناك مستثمرين
-    if (investors.length === 0) {
-        const defaultInvestor = {
-            id: Date.now().toString(),
-            name: 'محمد عبد الله',
-            phone: '0501234567',
-            address: 'الرياض، حي النخيل',
-            cardNumber: 'ID12345678',
-            joinDate: new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString(),
-            status: 'نشط',
-            amount: 50000,
-            investments: [
-                {
-                    amount: 50000,
-                    date: new Date().toISOString().split('T')[0],
-                    interest: calculateInterest(50000, new Date().toISOString().split('T')[0])
-                }
-            ],
-            profits: [],
-            withdrawals: []
-        };
+    const withdrawInvestorSelect = document.getElementById('withdraw-investor');
+    const withdrawAmountInput = document.getElementById('withdraw-amount');
+    const withdrawDateInput = document.getElementById('withdraw-date');
+    const withdrawNotesInput = document.getElementById('withdraw-notes');
+    
+    if (!withdrawInvestorSelect || !withdrawAmountInput || !withdrawDateInput) {
+        showNotification('خطأ في النموذج: بعض الحقول المطلوبة غير موجودة', 'error');
+        return;
+    }
+    
+    const investorId = withdrawInvestorSelect.value;
+    const amount = parseFloat(withdrawAmountInput.value);
+    const withdrawDate = withdrawDateInput.value;
+    const notes = withdrawNotesInput ? withdrawNotesInput.value || '' : '';
+    
+    if (!investorId || isNaN(amount) || amount <= 0 || !withdrawDate) {
+        showNotification('الرجاء إدخال جميع البيانات المطلوبة بشكل صحيح', 'error');
+        return;
+    }
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    if (!investor) {
+        showNotification('لم يتم العثور على بيانات المستثمر', 'error');
+        return;
+    }
+    
+    if (amount > investor.amount) {
+        showNotification('مبلغ السحب أكبر من الرصيد المتاح', 'error');
+        return;
+    }
+    
+    // البحث عن أقرب استثمار لخصم المبلغ منه
+    // نقوم بترتيب الاستثمارات من الأقدم إلى الأحدث
+    const sortedInvestments = [...investor.investments].sort((a, b) => {
+        return new Date(a.date) - new Date(b.date);
+    });
+    
+    let remainingWithdrawal = amount;
+    
+    // معالجة السحب وقطع الفائدة
+    for (let i = 0; i < sortedInvestments.length && remainingWithdrawal > 0; i++) {
+        const currentInvestment = sortedInvestments[i];
         
-        investors.push(defaultInvestor);
+        // إذا كان الاستثمار به مبلغ كافٍ للسحب
+        if (currentInvestment.amount >= remainingWithdrawal) {
+            // خصم المبلغ من الاستثمار
+            currentInvestment.amount -= remainingWithdrawal;
+            
+            // إنشاء استثمار جديد للمبلغ المسحوب مع تاريخ السحب كتاريخ انتهاء
+            // وقطع الفائدة عن هذا المبلغ (وضع الفائدة بصفر)
+            const withdrawnInvestment = {
+                amount: remainingWithdrawal,
+                date: currentInvestment.date,
+                endDate: withdrawDate,
+                interest: 0, // قطع الفائدة
+                notes: `تم سحب ${remainingWithdrawal} في ${withdrawDate}`
+            };
+            
+            // إضافة المبلغ المسحوب إلى قائمة السحوبات
+            if (!investor.withdrawnInvestments) {
+                investor.withdrawnInvestments = [];
+            }
+            investor.withdrawnInvestments.push(withdrawnInvestment);
+            
+            // إعادة حساب الفائدة للمبلغ المتبقي
+            currentInvestment.interest = calculateInterest(currentInvestment.amount, currentInvestment.date);
+            
+            remainingWithdrawal = 0;
+        }
+        // إذا كان المبلغ المطلوب سحبه أكبر من الاستثمار الحالي
+        else {
+            // سحب كامل الاستثمار
+            remainingWithdrawal -= currentInvestment.amount;
+            
+            // إنشاء استثمار منتهي للمبلغ المسحوب وقطع الفائدة
+            const withdrawnInvestment = {
+                amount: currentInvestment.amount,
+                date: currentInvestment.date,
+                endDate: withdrawDate,
+                interest: 0, // قطع الفائدة
+                notes: `تم سحب ${currentInvestment.amount} في ${withdrawDate}`
+            };
+            
+            // إضافة المبلغ المسحوب إلى قائمة السحوبات
+            if (!investor.withdrawnInvestments) {
+                investor.withdrawnInvestments = [];
+            }
+            investor.withdrawnInvestments.push(withdrawnInvestment);
+            
+            // تصفير هذا الاستثمار
+            currentInvestment.amount = 0;
+            currentInvestment.interest = 0;
+        }
+    }
+    
+    // إضافة السحب إلى قائمة السحوبات
+    investor.withdrawals.push({
+        date: withdrawDate,
+        amount,
+        notes
+    });
+    
+    // تحديث رصيد المستثمر الإجمالي
+    investor.amount = (investor.amount || 0) - amount;
+    
+    // إضافة عملية جديدة
+    addTransaction('سحب', investorId, amount, notes);
+    
+    saveData();
+    
+    // إغلاق النافذة المنبثقة
+    closeModal('add-withdraw-modal');
+    
+    showNotification(`تم سحب مبلغ ${formatCurrency(amount)} من حساب المستثمر ${investor.name} بنجاح!`, 'success');
+}
+
+// 3. تعديل دالة حساب الأرباح للمستثمر لتأخذ بعين الاعتبار المبالغ المسحوبة التي تم قطع فائدتها
+function calculateProfitForInvestor() {
+    console.log('حساب الأرباح للمستثمر...');
+    
+    const investorSelect = document.getElementById('profit-investor');
+    if (!investorSelect) return;
+    
+    const investorId = investorSelect.value;
+    const profitDetails = document.getElementById('profit-details');
+    
+    if (!investorId || !profitDetails) {
+        if (profitDetails) profitDetails.innerHTML = '';
+        return;
+    }
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    
+    if (investor) {
+        let totalProfit = 0;
+        let profitBreakdown = `
+            <div class="section">
+                <h3 class="section-title">تفاصيل الأرباح</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المبلغ</th>
+                            <th>تاريخ الإيداع</th>
+                            <th>أيام الاستثمار</th>
+                            <th>الربح</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
         
-        // إضافة عملية إيداع افتراضية
-        const defaultTransaction = {
-            id: Date.now().toString(),
-            date: new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString(),
-            type: 'إيداع',
-            investorId: defaultInvestor.id,
-            investorName: defaultInvestor.name,
-            amount: defaultInvestor.amount,
-            balanceAfter: defaultInvestor.amount
-        };
+        // معالجة الاستثمارات النشطة
+        investor.investments.forEach(inv => {
+            // تجاهل الاستثمارات ذات المبلغ الصفري
+            if (inv.amount <= 0) return;
+            
+            const start = new Date(inv.date);
+            const today = new Date();
+            const days = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+            
+            // حساب الربح للاستثمارات النشطة فقط
+            const profit = calculateInterest(inv.amount, inv.date, today.toISOString().split('T')[0]);
+            
+            totalProfit += profit;
+            profitBreakdown += `
+                <tr>
+                    <td>${formatCurrency(inv.amount, true)}</td>
+                    <td>${inv.date}</td>
+                    <td>${days} يوم</td>
+                    <td>${formatCurrency(profit, true)}</td>
+                </tr>
+            `;
+        });
         
-        transactions.push(defaultTransaction);
+        // إضافة قسم للاستثمارات المسحوبة التي تم قطع فائدتها
+        if (investor.withdrawnInvestments && investor.withdrawnInvestments.length > 0) {
+            profitBreakdown += `
+                <tr class="separator">
+                    <td colspan="4"><strong>الاستثمارات المسحوبة (تم قطع فائدتها)</strong></td>
+                </tr>
+            `;
+            
+            investor.withdrawnInvestments.forEach(inv => {
+                const start = new Date(inv.date);
+                const end = new Date(inv.endDate);
+                const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                
+                profitBreakdown += `
+                    <tr class="withdrawn">
+                        <td>${formatCurrency(inv.amount, true)}</td>
+                        <td>${inv.date} إلى ${inv.endDate}</td>
+                        <td>${days} يوم</td>
+                        <td>${formatCurrency(0, true)} <small>(تم قطع الفائدة)</small></td>
+                    </tr>
+                `;
+            });
+        }
         
-        saveData();
-        console.log('تم إضافة بيانات افتراضية للنظام');
+        profitBreakdown += `
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>إجمالي الربح</strong></td>
+                            <td><strong>${formatCurrency(totalProfit, true)}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        `;
+        
+        profitDetails.innerHTML = profitBreakdown;
+    } else {
+        profitDetails.innerHTML = '<p>لم يتم العثور على بيانات المستثمر</p>';
     }
 }
+
+// 4. تحديث دالة دفع الأرباح لتأخذ بعين الاعتبار المبالغ المسحوبة
+function payProfit() {
+    console.log('دفع الأرباح...');
+    
+    const profitInvestorSelect = document.getElementById('profit-investor');
+    if (!profitInvestorSelect) {
+        showNotification('خطأ في النموذج: لم يتم العثور على عنصر اختيار المستثمر', 'error');
+        return;
+    }
+    
+    const investorId = profitInvestorSelect.value;
+    if (!investorId) {
+        showNotification('الرجاء اختيار مستثمر', 'error');
+        return;
+    }
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    if (!investor) {
+        showNotification('لم يتم العثور على بيانات المستثمر', 'error');
+        return;
+    }
+    
+    let totalProfit = 0;
+    
+    // حساب الأرباح للاستثمارات النشطة فقط
+    investor.investments.forEach(inv => {
+        // تجاهل الاستثمارات ذات المبلغ الصفري
+        if (inv.amount <= 0) return;
+        
+        const start = new Date(inv.date);
+        const today = new Date();
+        const profit = calculateInterest(inv.amount, inv.date, today.toISOString().split('T')[0]);
+        totalProfit += profit;
+    });
+    
+    // تسجيل عملية دفع الأرباح
+    investor.profits.push({
+        date: new Date().toISOString().split('T')[0],
+        amount: totalProfit
+    });
+    
+    // إضافة عملية جديدة
+    addTransaction('دفع أرباح', investorId, totalProfit, 'دفع أرباح مستحقة');
+    
+    saveData();
+    
+    // إغلاق النافذة المنبثقة
+    closeModal('pay-profit-modal');
+    
+    showNotification(`تم دفع الأرباح بمبلغ ${formatCurrency(totalProfit)} للمستثمر ${investor.name} بنجاح!`, 'success');
+}
+
+// 5. تعديل دالة عرض رصيد المستثمر للتحقق من المبالغ المسحوبة
+function showInvestorBalance() {
+    console.log('عرض رصيد المستثمر...');
+    
+    const withdrawInvestorSelect = document.getElementById('withdraw-investor');
+    const balanceInfo = document.getElementById('withdraw-balance-info');
+    
+    if (!withdrawInvestorSelect || !balanceInfo) return;
+    
+    const investorId = withdrawInvestorSelect.value;
+    
+    if (!investorId) {
+        balanceInfo.innerHTML = '';
+        return;
+    }
+    
+    const investor = investors.find(inv => inv.id === investorId);
+    if (!investor) {
+        balanceInfo.innerHTML = '';
+        return;
+    }
+    
+    // الحصول على إجمالي المبلغ المستثمر المتاح للسحب
+    const totalInvestment = investor.amount || 0;
+    
+    // إضافة معلومات إضافية عن السحوبات السابقة
+    let withdrawalsHTML = '';
+    if (investor.withdrawals && investor.withdrawals.length > 0) {
+        withdrawalsHTML = `
+            <div class="mt-3">
+                <label class="form-label text-warning">تنبيه: سحب المبالغ يؤدي إلى قطع الفائدة عنها للشهر بالكامل</label>
+                <div class="recent-withdrawals">
+                    <small>آخر السحوبات:</small>
+                    <ul class="withdrawal-list">
+        `;
+        
+        // عرض آخر 3 سحوبات
+        const recentWithdrawals = investor.withdrawals
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 3);
+            
+        recentWithdrawals.forEach(withdrawal => {
+            withdrawalsHTML += `
+                <li>
+                    <span class="date">${withdrawal.date}</span>
+                    <span class="amount">${formatCurrency(withdrawal.amount)}</span>
+                </li>
+            `;
+        });
+        
+        withdrawalsHTML += `
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+    
+    balanceInfo.innerHTML = `
+        <label class="form-label">الرصيد المتاح</label>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 1rem;">
+            ${formatCurrency(totalInvestment)}
+        </div>
+        ${withdrawalsHTML}
+    `;
+}
+
+// 6. إضافة أنماط CSS لتحسين عرض المعلومات المتعلقة بالسحوبات
+function addWithdrawalStyles() {
+    // التحقق من وجود أنماط مسبقة
+    if (document.getElementById('withdrawal-styles')) {
+        return;
+    }
+    
+    // إنشاء عنصر نمط جديد
+    const styleElement = document.createElement('style');
+    styleElement.id = 'withdrawal-styles';
+    
+    // إضافة أنماط CSS
+    styleElement.textContent = `
+        /* أنماط لقائمة السحوبات */
+        .withdrawal-list {
+            list-style: none;
+            padding: 0;
+            margin: 0.5rem 0;
+        }
+        
+        .withdrawal-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            border-bottom: 1px dashed #eee;
+            font-size: 0.85rem;
+        }
+        
+        .withdrawal-list .date {
+            color: #666;
+        }
+        
+        .withdrawal-list .amount {
+            font-weight: 500;
+            color: #e74c3c;
+        }
+        
+        /* أنماط للصفوف في جدول الأرباح */
+        tr.separator td {
+            background-color: #f8f9fa;
+            border-top: 2px solid #dee2e6;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        tr.withdrawn {
+            color: #6c757d;
+            background-color: #f8f9fa;
+        }
+        
+        tr.withdrawn td {
+            text-decoration: line-through;
+            opacity: 0.8;
+        }
+        
+        tr.withdrawn td:last-child {
+            text-decoration: none;
+            color: #e74c3c;
+        }
+        
+        tr.withdrawn small {
+            display: block;
+            text-decoration: none;
+            font-style: italic;
+            color: #e74c3c;
+        }
+        
+        /* أنماط للتنبيهات */
+        .text-warning {
+            color: #f39c12;
+            font-size: 0.9rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+    `;
+    
+    // إضافة عنصر النمط إلى رأس الصفحة
+    document.head.appendChild(styleElement);
+    console.log('تم إضافة أنماط CSS للسحوبات');
+}
+
+// 7. تطبيق التغييرات عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('تطبيق إصلاحات معالجة قطع الفائدة عند السحب...');
+    
+    // استبدال الدوال الأصلية بالدوال المحدثة
+    window.calculateInterest = calculateInterest;
+    window.withdrawAmount = withdrawAmount;
+    window.calculateProfitForInvestor = calculateProfitForInvestor;
+    window.payProfit = payProfit;
+    window.showInvestorBalance = showInvestorBalance;
+    
+    // إضافة أنماط CSS
+    addWithdrawalStyles();
+    
+    // إضافة رسالة تنبيه عند فتح نافذة السحب
+    const withdrawalModal = document.getElementById('add-withdraw-modal');
+    if (withdrawalModal) {
+        const modalTitle = withdrawalModal.querySelector('.modal-title');
+        if (modalTitle) {
+            modalTitle.innerHTML = 'سحب <small style="font-size: 0.75rem; color: #e74c3c; display: block; margin-top: 5px;"> (سيتم قطع فائدة المبلغ المسحوب للشهر بالكامل)</small>';
+        }
+    }
+    
+    console.log('تم تطبيق الإصلاحات بنجاح');
+});
+
+
+/**
+ * سكربت لاختبار آلية قطع الفائدة عند السحب
+ * لتجربة الميزة قبل تطبيقها على النظام الكامل
+ */
+
+// دالة محاكاة للاختبار
+function testWithdrawalInterestCut() {
+    console.log("=== بدء اختبار قطع الفائدة عند السحب ===");
+    
+    // 1. إنشاء بيانات اختبار
+    const testInvestor = {
+        id: "test123",
+        name: "مستثمر اختباري",
+        amount: 50000,
+        investments: [
+            {
+                amount: 30000,
+                date: "2025-03-01",
+                interest: 1750 // عائد 17.5% شهرياً للمبلغ 30000
+            },
+            {
+                amount: 20000,
+                date: "2025-03-15",
+                interest: 1166.67 // عائد 17.5% شهرياً للمبلغ 20000
+            }
+        ],
+        withdrawnInvestments: [],
+        withdrawals: []
+    };
+    
+    console.log("بيانات المستثمر قبل السحب:");
+    console.table({
+        "المستثمر": testInvestor.name,
+        "إجمالي الاستثمار": testInvestor.amount,
+        "استثمار 1": `${testInvestor.investments[0].amount} (ربح: ${testInvestor.investments[0].interest.toFixed(2)})`,
+        "استثمار 2": `${testInvestor.investments[1].amount} (ربح: ${testInvestor.investments[1].interest.toFixed(2)})`,
+        "إجمالي الربح": (testInvestor.investments[0].interest + testInvestor.investments[1].interest).toFixed(2)
+    });
+    
+    // 2. محاكاة عملية سحب في منتصف الشهر (15 أبريل)
+    console.log("\nسحب مبلغ 15000 بتاريخ 2025-04-15 من الاستثمار الأول...");
+    
+    const withdrawalAmount = 15000;
+    const withdrawalDate = "2025-04-15";
+    
+    // البحث عن أقدم استثمار
+    const oldestInvestment = testInvestor.investments[0]; // الاستثمار بتاريخ 1 مارس
+    
+    // خصم المبلغ من الاستثمار
+    oldestInvestment.amount -= withdrawalAmount;
+    
+    // إنشاء سجل للمبلغ المسحوب مع قطع الفائدة عنه
+    const withdrawnInvestment = {
+        amount: withdrawalAmount,
+        date: oldestInvestment.date,
+        endDate: withdrawalDate,
+        interest: 0, // قطع الفائدة
+        notes: `تم سحب ${withdrawalAmount} في ${withdrawalDate}`
+    };
+    
+    // إضافة المبلغ المسحوب إلى قائمة السحوبات
+    testInvestor.withdrawnInvestments.push(withdrawnInvestment);
+    
+    // إعادة حساب الفائدة للمبلغ المتبقي
+    oldestInvestment.interest = (oldestInvestment.amount * 0.175);
+    
+    // تحديث إجمالي مبلغ المستثمر
+    testInvestor.amount -= withdrawalAmount;
+    
+    // إضافة سجل السحب
+    testInvestor.withdrawals.push({
+        date: withdrawalDate,
+        amount: withdrawalAmount,
+        notes: "سحب اختباري"
+    });
+    
+    // 3. عرض النتائج بعد السحب
+    console.log("\nبيانات المستثمر بعد السحب:");
+    console.table({
+        "المستثمر": testInvestor.name,
+        "إجمالي الاستثمار بعد السحب": testInvestor.amount,
+        "استثمار 1 (متبقي)": `${oldestInvestment.amount} (ربح: ${oldestInvestment.interest.toFixed(2)})`,
+        "استثمار 2": `${testInvestor.investments[1].amount} (ربح: ${testInvestor.investments[1].interest.toFixed(2)})`,
+        "المبلغ المسحوب": `${withdrawnInvestment.amount} (ربح: ${withdrawnInvestment.interest})`,
+        "إجمالي الربح بعد السحب": (oldestInvestment.interest + testInvestment.investments[1].interest).toFixed(2)
+    });
+    
+    // 4. مقارنة الربح قبل وبعد السحب
+    const profitBeforeWithdrawal = 1750 + 1166.67;
+    const profitAfterWithdrawal = oldestInvestment.interest + testInvestment.investments[1].interest;
+    const profitReduction = profitBeforeWithdrawal - profitAfterWithdrawal;
+    
+    console.log("\nتأثير السحب على الأرباح:");
+    console.table({
+        "الربح قبل السحب": profitBeforeWithdrawal.toFixed(2),
+        "الربح بعد السحب": profitAfterWithdrawal.toFixed(2),
+        "الفرق (مقدار الانخفاض)": profitReduction.toFixed(2),
+        "نسبة الانخفاض": ((profitReduction / profitBeforeWithdrawal) * 100).toFixed(2) + "%"
+    });
+    
+    console.log("\n=== انتهاء الاختبار ===");
+    console.log("ملاحظة: تم قطع فائدة المبلغ المسحوب بالكامل، لا يوجد فائدة متراكمة عليه حتى تاريخ السحب");
+    
+    return {
+        investorBefore: {
+            amount: 50000,
+            totalProfit: profitBeforeWithdrawal
+        },
+        investorAfter: {
+            amount: testInvestor.amount,
+            totalProfit: profitAfterWithdrawal,
+            profitReduction: profitReduction,
+            profitReductionPercentage: (profitReduction / profitBeforeWithdrawal) * 100
+        },
+        withdrawnAmount: withdrawnInvestment.amount
+    };
+}
+
+// تشغيل الاختبار
+testWithdrawalInterestCut();
 
 // إضافة استدعاء لدالة البيانات الافتراضية في بداية التطبيق
 document.addEventListener('DOMContentLoaded', function() {

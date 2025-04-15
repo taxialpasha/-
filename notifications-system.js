@@ -1,223 +1,239 @@
 /**
- * دمج نظام التنبيهات مع التطبيق الأساسي
- * يحتوي هذا الملف على التعديلات اللازمة لربط نظام التنبيهات مع وظائف التطبيق الأساسية
+ * إصلاح مشكلة اختفاء المستثمرين في نظام التنبيهات
+ * هذا الملف يحتوي على تعديلات وإصلاحات لمشكلة عدم ظهور المستثمرين بعد إضافة نظام التنبيهات
  */
 
-// تهيئة التطبيق
+// تنفيذ الإصلاح عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
-    // تهيئة نظام التنبيهات
-    if (window.notificationsSystem && typeof window.notificationsSystem.init === 'function') {
-        window.notificationsSystem.init();
-    } else {
+    console.log('تطبيق إصلاح مشكلة اختفاء المستثمرين...');
+    
+    // إصلاح دوال نظام التنبيهات
+    fixNotificationsSystem();
+    
+    // إصلاح دوال عرض المستثمرين
+    fixInvestorsRendering();
+    
+    // إعادة تهيئة نظام التنبيهات بعد التأكد من تحميل جميع البيانات
+    setTimeout(() => {
+        if (window.notificationsSystem && typeof window.notificationsSystem.init === 'function') {
+            window.notificationsSystem.init();
+        }
+    }, 1000);
+});
+
+/**
+ * إصلاح نظام التنبيهات لتجنب تعارضه مع عرض المستثمرين
+ */
+function fixNotificationsSystem() {
+    // التأكد من وجود كائن نظام التنبيهات
+    if (!window.notificationsSystem) {
         console.error('نظام التنبيهات غير متوفر');
+        return;
     }
     
-    // تعديل دوال التطبيق الأساسية لإضافة تنبيهات النظام
-    extendAppFunctions();
+    // حفظ نسخة من الدالة الأصلية لتحديث التنبيهات
+    const originalUpdateNotifications = window.notificationsSystem.update;
+    
+    // استبدال دالة تحديث التنبيهات بنسخة آمنة
+    window.notificationsSystem.update = function() {
+        try {
+            // تنفيذ الدالة الأصلية في محاولة/خطأ لتجنب تأثيرها على باقي التطبيق
+            originalUpdateNotifications.apply(this, arguments);
+        } catch (error) {
+            console.error('خطأ في تحديث التنبيهات:', error);
+        }
+        
+        // التأكد من إعادة عرض المستثمرين بعد تحديث التنبيهات
+        safeRenderInvestorsTable();
+    };
+    
+    // تعديل طريقة الحصول على المستثمرين المستحقين للربح
+    if (window.notificationsSystem.getDueInvestors) {
+        const originalGetDueInvestors = window.notificationsSystem.getDueInvestors;
+        
+        window.notificationsSystem._getDueInvestors = function() {
+            try {
+                // استخدام نسخة من مصفوفة المستثمرين لتجنب تعديلها
+                const investorsCopy = window.investors ? [...window.investors] : [];
+                
+                // العمل على النسخة بدلاً من الأصل
+                window._tempInvestors = investorsCopy;
+                
+                // استدعاء الدالة الأصلية ولكن مع تعديل مؤقت للكائن window.investors
+                const originalInvestors = window.investors;
+                window.investors = investorsCopy;
+                
+                const result = originalGetDueInvestors.apply(this, arguments);
+                
+                // إعادة الكائن الأصلي
+                window.investors = originalInvestors;
+                
+                return result;
+            } catch (error) {
+                console.error('خطأ في الحصول على المستثمرين المستحقين للربح:', error);
+                return [];
+            }
+        };
+    }
+}
+
+/**
+ * إصلاح عرض المستثمرين في الجدول
+ */
+function fixInvestorsRendering() {
+    // حفظ نسخة من دالة renderInvestorsTable الأصلية
+    if (window.renderInvestorsTable) {
+        const originalRenderInvestorsTable = window.renderInvestorsTable;
+        
+        // استبدال الدالة بنسخة محسنة
+        window.renderInvestorsTable = function() {
+            try {
+                console.log('عرض جدول المستثمرين (نسخة محسنة)...');
+                
+                // التأكد من وجود مصفوفة المستثمرين قبل العرض
+                if (!window.investors || !Array.isArray(window.investors)) {
+                    console.error('مصفوفة المستثمرين غير موجودة أو غير صحيحة');
+                    return;
+                }
+                
+                // التأكد من وجود العنصر المستهدف
+                const tableBody = document.querySelector('#investors-table tbody');
+                if (!tableBody) {
+                    console.error('لم يتم العثور على جدول المستثمرين');
+                    return;
+                }
+                
+                // حفظ المحتوى الحالي للجدول
+                const currentTableHTML = tableBody.innerHTML;
+                
+                // تجربة تنفيذ الدالة الأصلية
+                originalRenderInvestorsTable.apply(this, arguments);
+                
+                // التحقق مما إذا كان الجدول فارغاً بعد التنفيذ
+                if (tableBody.children.length === 0 || (tableBody.children.length === 1 && tableBody.querySelector('td.text-center'))) {
+                    console.warn('تم تفريغ جدول المستثمرين، استعادة المحتوى السابق...');
+                    
+                    // إعادة المحتوى السابق
+                    tableBody.innerHTML = currentTableHTML;
+                    
+                    // محاولة إعادة إضافة مستمعي الأحداث
+                    setupInvestorActionButtons();
+                }
+            } catch (error) {
+                console.error('خطأ في عرض جدول المستثمرين:', error);
+            }
+        };
+    }
+    
+    // إضافة دالة آمنة لعرض جدول المستثمرين
+    window.safeRenderInvestorsTable = function() {
+        try {
+            if (typeof window.renderInvestorsTable === 'function') {
+                window.renderInvestorsTable();
+            }
+        } catch (error) {
+            console.error('خطأ في العرض الآمن لجدول المستثمرين:', error);
+        }
+    };
+}
+
+/**
+ * إعادة إضافة مستمعي الأحداث لأزرار إجراءات المستثمرين
+ */
+function setupInvestorActionButtons() {
+    // أزرار عرض تفاصيل المستثمر
+    const viewButtons = document.querySelectorAll('.view-investor');
+    viewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const investorId = this.getAttribute('data-id');
+            if (typeof window.showInvestorDetails === 'function') {
+                window.showInvestorDetails(investorId);
+            }
+        });
+    });
+    
+    // أزرار تعديل المستثمر
+    const editButtons = document.querySelectorAll('.edit-investor');
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const investorId = this.getAttribute('data-id');
+            if (typeof window.editInvestor === 'function') {
+                window.editInvestor(investorId);
+            }
+        });
+    });
+    
+    // أزرار حذف المستثمر
+    const deleteButtons = document.querySelectorAll('.delete-investor');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const investorId = this.getAttribute('data-id');
+            if (typeof window.deleteInvestor === 'function') {
+                window.deleteInvestor(investorId);
+            }
+        });
+    });
+}
+
+// تطبيق إصلاحات إضافية بعد تحميل الصفحة بالكامل
+window.addEventListener('load', function() {
+    // تأخير لضمان تحميل جميع البيانات
+    setTimeout(() => {
+        // إعادة عرض صفحة المستثمرين إذا كانت نشطة
+        const investorsPage = document.getElementById('investors-page');
+        if (investorsPage && investorsPage.classList.contains('active')) {
+            safeRenderInvestorsTable();
+        }
+        
+        // إضافة مستمع حدث للتنقل بين الصفحات
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                const pageId = this.getAttribute('data-page');
+                if (pageId === 'investors') {
+                    // تأخير قصير قبل عرض المستثمرين
+                    setTimeout(safeRenderInvestorsTable, 200);
+                }
+            });
+        });
+    }, 500);
 });
 
 /**
- * تعديل دوال التطبيق الأساسية لإضافة تنبيهات النظام
+ * تعديل وظيفة نظام التنبيهات للعمل بشكل آمن
  */
-function extendAppFunctions() {
-    console.log('تعديل دوال التطبيق لدمج نظام التنبيهات...');
+function safePatchNotificationsSystem() {
+    // التحقق من وجود نظام التنبيهات
+    if (!window.notificationsSystem) {
+        return;
+    }
     
-    // تعديل دالة إضافة مستثمر جديد
-    if (window.addNewInvestor) {
-        const originalAddNewInvestor = window.addNewInvestor;
-        window.addNewInvestor = function() {
-            // استدعاء الدالة الأصلية
-            const result = originalAddNewInvestor.apply(this, arguments);
+    // الدوال الأساسية التي نحتاج إلى تعديلها
+    const functionsToSafePatch = [
+        'init',
+        'update',
+        'add',
+        'addSystemNotification',
+        'markAllNotificationsAsRead'
+    ];
+    
+    // تطبيق التعديل على كل دالة
+    functionsToSafePatch.forEach(funcName => {
+        if (typeof window.notificationsSystem[funcName] === 'function') {
+            const originalFunc = window.notificationsSystem[funcName];
             
-            // إضافة تنبيه للنظام إذا تمت العملية بنجاح
-            if (result !== false) {
-                // الحصول على معلومات المستثمر الجديد
-                const latestInvestor = window.investors[window.investors.length - 1];
-                
-                // إضافة تنبيه
-                if (window.notificationsSystem && latestInvestor) {
-                    window.notificationsSystem.addSystemNotification('new-investor', {
-                        investorId: latestInvestor.id,
-                        investorName: latestInvestor.name
-                    });
+            // استبدال الدالة بنسخة آمنة
+            window.notificationsSystem[funcName] = function() {
+                try {
+                    return originalFunc.apply(this, arguments);
+                } catch (error) {
+                    console.error(`خطأ في تنفيذ ${funcName}:`, error);
+                    return null;
                 }
-            }
-            
-            return result;
-        };
-    }
-    
-    // تعديل دالة إضافة إيداع
-    if (window.addDeposit) {
-        const originalAddDeposit = window.addDeposit;
-        window.addDeposit = function() {
-            // استدعاء الدالة الأصلية
-            const result = originalAddDeposit.apply(this, arguments);
-            
-            // إضافة تنبيه للنظام إذا تمت العملية بنجاح
-            if (result !== false) {
-                // الحصول على معلومات الإيداع الجديد
-                const depositInvestorSelect = document.getElementById('deposit-investor');
-                const depositAmountInput = document.getElementById('deposit-amount');
-                
-                if (depositInvestorSelect && depositAmountInput) {
-                    const investorId = depositInvestorSelect.value;
-                    const amount = parseFloat(depositAmountInput.value);
-                    
-                    // العثور على المستثمر
-                    const investor = window.investors.find(inv => inv.id === investorId);
-                    
-                    // إضافة تنبيه
-                    if (window.notificationsSystem && investor) {
-                        window.notificationsSystem.addSystemNotification('deposit', {
-                            investorId: investor.id,
-                            investorName: investor.name,
-                            amount: amount
-                        });
-                    }
-                }
-            }
-            
-            return result;
-        };
-    }
-    
-    // تعديل دالة سحب مبلغ
-    if (window.withdrawAmount) {
-        const originalWithdrawAmount = window.withdrawAmount;
-        window.withdrawAmount = function() {
-            // استدعاء الدالة الأصلية
-            const result = originalWithdrawAmount.apply(this, arguments);
-            
-            // إضافة تنبيه للنظام إذا تمت العملية بنجاح
-            if (result !== false) {
-                // الحصول على معلومات السحب
-                const withdrawInvestorSelect = document.getElementById('withdraw-investor');
-                const withdrawAmountInput = document.getElementById('withdraw-amount');
-                
-                if (withdrawInvestorSelect && withdrawAmountInput) {
-                    const investorId = withdrawInvestorSelect.value;
-                    const amount = parseFloat(withdrawAmountInput.value);
-                    
-                    // العثور على المستثمر
-                    const investor = window.investors.find(inv => inv.id === investorId);
-                    
-                    // إضافة تنبيه
-                    if (window.notificationsSystem && investor) {
-                        window.notificationsSystem.addSystemNotification('withdrawal', {
-                            investorId: investor.id,
-                            investorName: investor.name,
-                            amount: amount
-                        });
-                    }
-                }
-            }
-            
-            return result;
-        };
-    }
-    
-    // تعديل دالة دفع الأرباح
-    if (window.payProfit) {
-        const originalPayProfit = window.payProfit;
-        window.payProfit = function() {
-            // استدعاء الدالة الأصلية
-            const result = originalPayProfit.apply(this, arguments);
-            
-            // إضافة تنبيه للنظام إذا تمت العملية بنجاح
-            if (result !== false) {
-                // الحصول على معلومات دفع الأرباح
-                const profitInvestorSelect = document.getElementById('profit-investor');
-                
-                if (profitInvestorSelect) {
-                    const investorId = profitInvestorSelect.value;
-                    
-                    // العثور على المستثمر
-                    const investor = window.investors.find(inv => inv.id === investorId);
-                    
-                    // حساب الربح المدفوع (استخدام آخر عملية)
-                    const latestTransaction = window.transactions
-                        .filter(tr => tr.investorId === investorId && tr.type === 'دفع أرباح')
-                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-                    
-                    // إضافة تنبيه
-                    if (window.notificationsSystem && investor && latestTransaction) {
-                        window.notificationsSystem.addSystemNotification('profit-payment', {
-                            investorId: investor.id,
-                            investorName: investor.name,
-                            amount: latestTransaction.amount
-                        });
-                        
-                        // تحديث نظام التنبيهات بعد دفع الأرباح
-                        window.notificationsSystem.update();
-                    }
-                }
-            }
-            
-            return result;
-        };
-    }
-    
-    // تعديل دالة تحديث لوحة التحكم
-    if (window.updateDashboard) {
-        const originalUpdateDashboard = window.updateDashboard;
-        window.updateDashboard = function() {
-            // استدعاء الدالة الأصلية
-            const result = originalUpdateDashboard.apply(this, arguments);
-            
-            // تحديث نظام التنبيهات
-            if (window.notificationsSystem) {
-                window.notificationsSystem.update();
-            }
-            
-            return result;
-        };
-    }
-    
-    console.log('تم تعديل دوال التطبيق لدمج نظام التنبيهات بنجاح');
+            };
+        }
+    });
 }
 
-/**
- * ربط شاشة الأرباح المستحقة بنظام التنبيهات
- */
-function connectProfitsPageWithNotifications() {
-    // تعديل دالة عرض جدول الأرباح
-    if (window.renderProfitsTable) {
-        const originalRenderProfitsTable = window.renderProfitsTable;
-        window.renderProfitsTable = function() {
-            // استدعاء الدالة الأصلية
-            const result = originalRenderProfitsTable.apply(this, arguments);
-            
-            // تحديث نظام التنبيهات
-            if (window.notificationsSystem) {
-                window.notificationsSystem.update();
-            }
-            
-            return result;
-        };
-    }
-}
-
-/**
- * إضافة وظيفة فتح شاشة الأرباح المستحقة من التنبيهات
- */
-function openDueProfitsPage() {
-    // الانتقال إلى صفحة الأرباح
-    if (typeof window.showPage === 'function') {
-        window.showPage('profits');
-    }
-    
-    // إغلاق نافذة التنبيهات
-    if (typeof window.closeModal === 'function') {
-        window.closeModal('notifications-modal');
-    }
-}
-
-// ربط وظائف نظام التنبيهات مع وظائف النظام الأساسي
-document.addEventListener('DOMContentLoaded', function() {
-    // ربط شاشة الأرباح المستحقة بنظام التنبيهات
-    connectProfitsPageWithNotifications();
-    
-    // إضافة وظيفة فتح شاشة الأرباح المستحقة من التنبيهات
-    window.openDueProfitsPage = openDueProfitsPage;
-});
+// تنفيذ التعديل الآمن لنظام التنبيهات
+document.addEventListener('DOMContentLoaded', safePatchNotificationsSystem);

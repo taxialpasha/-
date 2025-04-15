@@ -121,14 +121,366 @@ function applyFormatCurrencyEverywhere() {
                 });
             }
         });
+    };
+    
+    // إضافة الكود الخاص بتفعيل التنسيق الجديد عند تحميل الصفحة
+    console.log('تطبيق التنسيق الجديد على جميع المبالغ المالية في التطبيق...');
+}
+
+/**
+ * تفعيل تنسيق المبالغ المالية عند تحميل الصفحة
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // إضافة دالة تنسيق المبالغ للنافذة لاستخدامها في جميع أنحاء التطبيق
+    window.formatCurrency = formatCurrency;
+    
+    // تطبيق التنسيق الجديد على جميع المبالغ في التطبيق
+    applyFormatCurrencyEverywhere();
+});
+    
+    // تحديث دالة searchTransactions
+    window.originalSearchTransactions = window.searchTransactions;
+    window.searchTransactions = function(query) {
+        console.log(`البحث في العمليات (بالتنسيق الجديد): ${query}`);
+        
+        query = query.trim().toLowerCase();
+        
+        if (!query) {
+            // إذا كان البحث فارغًا، نعيد عرض جميع العمليات
+            renderTransactionsTable();
+            return;
+        }
+        
+        // تصفية العمليات حسب البحث
+        const filtered = transactions.filter(transaction => {
+            return transaction.id.toLowerCase().includes(query) ||
+                   transaction.investorName.toLowerCase().includes(query) ||
+                   transaction.type.toLowerCase().includes(query) ||
+                   transaction.date.toLowerCase().includes(query) ||
+                   transaction.amount.toString().includes(query);
+        });
+        
+        // عرض العمليات المصفّاة في الجدول
+        const tableBody = document.querySelector('#transactions-table tbody');
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = '';
+        
+        if (filtered.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `<td colspan="7" class="text-center">لم يتم العثور على نتائج للبحث: "${query}"</td>`;
+            tableBody.appendChild(emptyRow);
+            return;
+        }
+        
+        // عرض العمليات المصفّاة
+        filtered.forEach(transaction => {
+            const row = document.createElement('tr');
+            
+            // تحديد نوع العملية وأيقونتها
+            let typeClass = '';
+            let typeIcon = '';
+            
+            switch(transaction.type) {
+                case 'إيداع':
+                    typeClass = 'success';
+                    typeIcon = '<i class="fas fa-arrow-up"></i>';
+                    break;
+                case 'سحب':
+                    typeClass = 'danger';
+                    typeIcon = '<i class="fas fa-arrow-down"></i>';
+                    break;
+                case 'دفع أرباح':
+                    typeClass = 'info';
+                    typeIcon = '<i class="fas fa-hand-holding-usd"></i>';
+                    break;
+                default:
+                    typeClass = 'primary';
+                    typeIcon = '<i class="fas fa-exchange-alt"></i>';
+            }
+            
+            row.innerHTML = `
+                <td>${transaction.id}</td>
+                <td>${transaction.investorName}</td>
+                <td>
+                    <span class="badge badge-${typeClass}">${typeIcon} ${transaction.type}</span>
+                </td>
+                <td>${transaction.date}</td>
+                <td>${formatCurrency(transaction.amount)}</td>
+                <td>${transaction.balanceAfter ? formatCurrency(transaction.balanceAfter) : '-'}</td>
+                <td>
+                    <button class="btn btn-outline btn-sm transaction-details" data-id="${transaction.id}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+            
+            // إضافة مستمع الحدث لزر التفاصيل
+            const detailsButton = row.querySelector('.transaction-details');
+            if (detailsButton) {
+                detailsButton.addEventListener('click', () => {
+                    showTransactionDetails(transaction.id);
+                });
+            }
+        });
+    };
+    
+            tableBody.appendChild(row);
+            
+            // إضافة مستمعي الأحداث للأزرار
+            const viewButton = row.querySelector('.view-investor');
+            const editButton = row.querySelector('.edit-investor');
+            const deleteButton = row.querySelector('.delete-investor');
+            
+            if (viewButton) {
+                viewButton.addEventListener('click', () => {
+                    showInvestorDetails(investor.id);
+                });
+            
+            profitBreakdown += `
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>إجمالي الربح</strong></td>
+                            <td><strong>${formatCurrency(totalProfit, true)}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            `;
+            
+            profitDetails.innerHTML = profitBreakdown;
+        } else {
+            profitDetails.innerHTML = '<p>لم يتم العثور على بيانات المستثمر</p>';
+        }
+    
+    
+    // تحديث دالة showInvestorBalance
+    window.originalShowInvestorBalance = window.showInvestorBalance;
+    window.showInvestorBalance = function() {
+        console.log('عرض رصيد المستثمر (بالتنسيق الجديد)...');
+        
+        const withdrawInvestorSelect = document.getElementById('withdraw-investor');
+        const balanceInfo = document.getElementById('withdraw-balance-info');
+        
+        if (!withdrawInvestorSelect || !balanceInfo) return;
+        
+        const investorId = withdrawInvestorSelect.value;
+        
+        if (!investorId) {
+            balanceInfo.innerHTML = '';
+            return;
+        }
+        
+        const investor = investors.find(inv => inv.id === investorId);
+        if (!investor) {
+            balanceInfo.innerHTML = '';
+            return;
+        }
+        
+        const totalInvestment = investor.amount || getTotalInvestmentForInvestor(investorId);
+        balanceInfo.innerHTML = `
+            <label class="form-label">الرصيد المتاح</label>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 1rem;">
+                ${formatCurrency(totalInvestment, true)}
+            </div>
+        `;
+    };
+    
+    // تحديث دالة filterTransactions
+    window.originalFilterTransactions = window.filterTransactions;
+    window.filterTransactions = function(filterType) {
+        console.log(`تصفية العمليات حسب النوع (بالتنسيق الجديد): ${filterType}`);
+        
+        let filteredTransactions = [...transactions];
+        
+        switch (filterType) {
+            case 'الكل':
+                // لا نقوم بأي تصفية
+                break;
+            case 'إيداع':
+                filteredTransactions = filteredTransactions.filter(tr => tr.type === 'إيداع');
+                break;
+            case 'سحب':
+                filteredTransactions = filteredTransactions.filter(tr => tr.type === 'سحب');
+                break;
+            case 'أرباح':
+            case 'دفع أرباح':
+                filteredTransactions = filteredTransactions.filter(tr => tr.type === 'دفع أرباح');
+                break;
+        }
+        
+        // تحديث جدول العمليات
+        const tableBody = document.querySelector('#transactions-table tbody');
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = '';
+        
+        // ترتيب العمليات حسب التاريخ (الأحدث أولاً)
+        filteredTransactions.sort((a, b) => {
+            return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
+        });
+        
+        filteredTransactions.forEach(transaction => {
+            const row = document.createElement('tr');
+            
+            // تحديد نوع العملية وأيقونتها
+            let typeClass = '';
+            let typeIcon = '';
+            
+            switch(transaction.type) {
+                case 'إيداع':
+                    typeClass = 'success';
+                    typeIcon = '<i class="fas fa-arrow-up"></i>';
+                    break;
+                case 'سحب':
+                    typeClass = 'danger';
+                    typeIcon = '<i class="fas fa-arrow-down"></i>';
+                    break;
+                case 'دفع أرباح':
+                    typeClass = 'info';
+                    typeIcon = '<i class="fas fa-hand-holding-usd"></i>';
+                    break;
+                default:
+                    typeClass = 'primary';
+                    typeIcon = '<i class="fas fa-exchange-alt"></i>';
+            }
+            
+            row.innerHTML = `
+                <td>${transaction.id}</td>
+                <td>${transaction.investorName}</td>
+                <td>
+                    <span class="badge badge-${typeClass}">${typeIcon} ${transaction.type}</span>
+                </td>
+                <td>${transaction.date}</td>
+                <td>${formatCurrency(transaction.amount)}</td>
+                <td>${transaction.balanceAfter ? formatCurrency(transaction.balanceAfter) : '-'}</td>
+                <td>
+                    <button class="btn btn-outline btn-sm transaction-details" data-id="${transaction.id}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+            
+            // إضافة مستمع الحدث لزر التفاصيل
+            const detailsButton = row.querySelector('.transaction-details');
+            if (detailsButton) {
+                detailsButton.addEventListener('click', () => {
+                    showTransactionDetails(transaction.id);
+                });
+            }
+        });
+        
+        if (filteredTransactions.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="7" class="text-center">لا يوجد عمليات</td>';
+            tableBody.appendChild(emptyRow);
+        }
+    };
+    
+    // تحديث دالة searchInvestors
+    window.originalSearchInvestors = window.searchInvestors;
+    window.searchInvestors = function(query) {
+        console.log(`البحث في المستثمرين (بالتنسيق الجديد): ${query}`);
+        
+        query = query.trim().toLowerCase();
+        
+        if (!query) {
+            // إذا كان البحث فارغًا، نعيد عرض جميع المستثمرين
+            renderInvestorsTable();
+            return;
+        }
+        
+        // تصفية المستثمرين حسب البحث
+        const filtered = investors.filter(investor => {
+            return investor.name.toLowerCase().includes(query) ||
+                   investor.phone.toLowerCase().includes(query) ||
+                   (investor.address && investor.address.toLowerCase().includes(query)) ||
+                   (investor.cardNumber && investor.cardNumber.toLowerCase().includes(query)) ||
+                   investor.id.toLowerCase().includes(query);
+        });
+        
+        // عرض المستثمرين المصفّين
+        const tableBody = document.querySelector('#investors-table tbody');
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = '';
+        
+        if (filtered.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `<td colspan="8" class="text-center">لم يتم العثور على نتائج للبحث: "${query}"</td>`;
+            tableBody.appendChild(emptyRow);
+            return;
+        }
+        
+        // عرض المستثمرين المصفّين
+        filtered.forEach(investor => {
+            const row = document.createElement('tr');
+            
+            // حساب الربح الشهري
+            const monthlyProfit = investor.investments.reduce((total, inv) => {
+                return total + calculateInterest(inv.amount, inv.date);
+            }, 0);
+            
+            // تنسيق تاريخ الانضمام
+            const joinDate = investor.joinDate || investor.createdAt || '';
+            
+            row.innerHTML = `
+                <td>${investor.id}</td>
+                <td>
+                    <div class="investor-info">
+                        <div class="investor-avatar">${investor.name.charAt(0)}</div>
+                        <div>
+                            <div class="investor-name">${investor.name}</div>
+                            <div class="investor-phone">${investor.phone}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${investor.phone}</td>
+                <td>${formatCurrency(investor.amount || 0)}</td>
+                <td>${formatCurrency(monthlyProfit)}</td>
+                <td>${joinDate}</td>
+                <td><span class="badge badge-success">نشط</span></td>
+                <td>
+                    <div class="investor-actions">
+                        <button class="investor-action-btn view-investor" data-id="${investor.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="investor-action-btn edit edit-investor" data-id="${investor.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="investor-action-btn delete delete-investor" data-id="${investor.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+        });
+            
+            if (editButton) {
+                editButton.addEventListener('click', () => {
+                    editInvestor(investor.id);
+                });
+            }
+            
+            if (deleteButton) {
+                deleteButton.addEventListener('click', () => {
+                    deleteInvestor(investor.id);
+                });
+            }
+        }
         
         if (sortedInvestors.length === 0) {
             const emptyRow = document.createElement('tr');
             emptyRow.innerHTML = '<td colspan="8" class="text-center">لا يوجد مستثمرين</td>';
             tableBody.appendChild(emptyRow);
         }
-    };
-    }
+    
+    
     // تحديث دالة renderTransactionsTable
     window.originalRenderTransactionsTable = window.renderTransactionsTable;
     window.renderTransactionsTable = function() {
@@ -655,5 +1007,6 @@ function applyFormatCurrencyEverywhere() {
                     </tr>
                 `;
             });
+
         }
-    }
+        }

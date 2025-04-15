@@ -237,3 +237,5 @@ function safePatchNotificationsSystem() {
 
 // تنفيذ التعديل الآمن لنظام التنبيهات
 document.addEventListener('DOMContentLoaded', safePatchNotificationsSystem);
+
+

@@ -164,16 +164,18 @@ function setupNotificationsModalEvents(modalElement) {
  * تحديث عدد وقائمة التنبيهات
  */
 function updateNotifications() {
-    console.log('تحديث التنبيهات...');
-    
-    // حساب عدد المستثمرين المستحقين للربح
-    const dueInvestors = getDueInvestors();
-    
-    // تجهيز قائمة التنبيهات
-    updateNotificationsList(dueInvestors);
-    
-    // تحديث عدد التنبيهات في الزر
-    updateNotificationBadge(dueInvestors.length);
+    try {
+        const dueInvestors = window.notificationsSystem.getDueInvestors();
+        // حساب عدد المستثمرين المستحقين للربح
+        
+        // تجهيز قائمة التنبيهات
+        updateNotificationsList(dueInvestors);
+        
+        // تحديث عدد التنبيهات في الزر
+        updateNotificationBadge(dueInvestors.length);
+    } catch (error) {
+        console.error("خطأ في تحديث التنبيهات:", error);
+    }
 }
 
 /**

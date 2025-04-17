@@ -5,19 +5,50 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="mobile-web-app-capable" content="yes">
+
     <title>نظام الاستثمار المتكامل</title>
+    <!-- PWA مانيفست -->
+    <link rel="manifest" href="manifest.json" />
+    <!-- أيقونات التطبيق -->
+    <link rel="icon" type="image/png" href="icon.png" />
+    <link rel="apple-touch-icon" href="icon.png" />
+    <!-- لون الثيم للهاتف المحمول -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- وصف التطبيق -->
+    <meta name="description" content="نظام متكامل لإدارة الاستثمارات والمستثمرين" />
+    
     <!-- Font Awesome for icons -->
-
-    <link rel="icon" type="image/png" href="assets/icon.png" />
-
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
     <!-- Google Fonts - Tajawal -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&amp;display=swap"
         rel="stylesheet" />
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
+    
+    <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDGpAHia_wEmrhnmYjrPf1n1TrAzwEMiAI",
+        authDomain: "messageemeapp.firebaseapp.com",
+        databaseURL: "https://messageemeapp-default-rtdb.firebaseio.com",
+        projectId: "messageemeapp",
+        storageBucket: "messageemeapp.appspot.com",
+        messagingSenderId: "255034474844",
+        appId: "1:255034474844:web:5e3b7a6bc4b2fb94cc4199"
+    };
+    </script>
+
     <!-- CSS Styles -->
     <link href="style.css" rel="stylesheet" />
+    <link href="auth-system-styles.css" rel="stylesheet" />
 </head>
 <div class="custom-titlebar">
     <div class="window-drag-area">
@@ -117,7 +148,21 @@
                             <i class="fas fa-search search-icon"></i>
                         </div>
                         <!-- هذا نموذج لما يجب تعديله في ملف index.html -->
-
+  <!-- مؤشر تثبيت التطبيق -->
+    <div id="pwa-install-container">
+        <button class="pwa-close" id="pwa-close-btn">&times;</button>
+        <div class="pwa-install-title">
+            <i class="fas fa-download"></i>
+            تثبيت التطبيق
+        </div>
+        <div class="pwa-install-text">
+            قم بتثبيت نظام الاستثمار المتكامل على جهازك للوصول السريع والاستخدام دون اتصال بالإنترنت.
+        </div>
+        <div class="pwa-install-buttons">
+            <button class="pwa-install-btn pwa-install-accept" id="pwa-install-btn">تثبيت</button>
+            <button class="pwa-install-btn pwa-install-later" id="pwa-later-btn">لاحقاً</button>
+        </div>
+    </div>
 
 <!-- بعد التعديل - مع إضافة الشارة (badge) -->
 <button class="btn btn-outline" id="notification-btn">
@@ -654,14 +699,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <button class="btn btn-primary">
-                                <i class="fas fa-download"></i>
-                                <span>تنزيل نسخة احتياطية</span>
-                            </button>
-                            <button class="btn btn-outline">
-                                <i class="fas fa-upload"></i>
-                                <span>استعادة من نسخة احتياطية</span>
-                            </button>
+                           
                         </div>
                     </div>
                 </div>
@@ -953,11 +991,13 @@
         updateClock(); // أول تحديث عند التحميل
       </script>
       
-  
+   
+
     <!-- Scripts -->
     <!-- ملفات الأصلية (غير أساسية للتشغيل الجديد) -->
-    <script src="database.js"></script>
-    <!-- <script src="notifications.js"></script>
+   
+    <script src="firebase-sync.js"></script>
+     <!-- <script src="notifications.js"></script>
     <script src="sidebar.js"></script>
     <script src="investors.js"></script>
     <script src="transactions.js"></script>
@@ -967,24 +1007,60 @@
     <script src="main.js"></script>
     <script src="app.js"></script> -->
     <!-- الملف المعدل الجديد - يجب التأكد من وجود هذا الملف -->
-    <script src="app-fixed.js"></script>
-    <script src="currency-formatter-loader.js"></script>
-    <script src="currency-formatter.js"></script>
-    <script src="sidebar.js"></script>
-   <!-- 3. إضافة استدعاء ملفات JavaScript في نهاية الصفحة -->
+ <!--  -->
+<script src="notifications-fix.js"></script>
+<script src="app-fixed.js"></script>
+<script src="currency-formatter-loader.js"></script>
+<script src="currency-formatter.js"></script>
+<script src="sidebar.js"></script>
 <script src="notifications-system.js"></script>
 <script src="notifications-integration.js"></script>
 <script src="notifications-fix-v2.js"></script>
 <script src="Installation Script for System Fixes.js"></script>
+<script src="auth-integration.js"></script>
+<script src="auth-system.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('تم تحميل الصفحة بنجاح');
-            // سيتم تهيئة التطبيق تلقائيًا عبر الملف الجديد
-        });
+// استبدال السكربت في ملف index.html (سطر ~950-970)
+<script>
+  async function fetchExchangeRate() {
+    const display = document.getElementById("usd-iqd");
+    try {
+      // استخدام API بديل أو قيمة ثابتة كبديل في حالة فشل الاتصال
+      display.textContent = "1490 دينار"; // قيمة تقريبية ثابتة كبديل
+      
+      // محاولة الحصول على سعر الصرف الفعلي
+      try {
+        const response = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+        const data = await response.json();
+        
+        if (data && data.rates && data.rates.IQD) {
+          const rate = data.rates.IQD.toFixed(2);
+          display.textContent = `${rate} دينار`;
+        }
+      } catch (networkError) {
+        console.log("تعذر الاتصال بخدمة سعر الصرف، استخدام القيمة الافتراضية");
+      }
+    } catch (error) {
+      console.log("فشل في عرض سعر الصرف:", error);
+      display.textContent = "تعذر الاتصال";
+    }
+  }
 
+  fetchExchangeRate();
+  setInterval(fetchExchangeRate, 3600000); // تحديث كل ساعة بدلاً من كل دقيقة
+</script>
 
-    </script>
+<script>
+function updateClock() {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const seconds = now.getSeconds().toString().padStart(2, '0');
+  document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+}
+setInterval(updateClock, 1000);
+updateClock(); // أول تحديث عند التحميل
+</script>
 </body>
 
 </html>

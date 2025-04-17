@@ -236,6 +236,7 @@ function updateNotificationsList(dueInvestors) {
  * تحديث علامة عدد التنبيهات
  * @param {Number} count - عدد التنبيهات
  */
+// تعديل دالة updateNotificationBadge في ملف notifications-integration.js (سطر ~150)
 function updateNotificationBadge(count) {
     // تحديث المتغير العام
     notificationsCount = count;

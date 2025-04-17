@@ -1,1637 +1,914 @@
-function createEnhancedLoginScreen() {
-        console.log('إنشاء شاشة تسجيل الدخول المحسنة...');
-        
-        // إنشاء عنصر الشاشة
-        const loginScreen = document.createElement('div');
-        loginScreen.id = 'auth-login-screen';
-        loginScreen.className = 'auth-screen';
-        
-        // إضافة محتوى الشاشة
-        loginScreen.innerHTML = `
-            <div class="auth-container">
-                <div class="auth-content">
-                    <div class="auth-header">
-                        <div class="auth-logo">
-                            <i class="fas fa-chart-line"></i>
-                            <span>نظام الاستثمار المتكامل</span>
-                        </div>
-                        <p class="auth-welcome">مرحباً بك في نظام الاستثمار المتكامل</p>
-                    </div>
-                    
-                    <div class="auth-tabs">
-                        <button class="auth-tab active" data-tab="login">تسجيل الدخول</button>
-                        <button class="auth-tab" data-tab="register">إنشاء حساب</button>
-                    </div>
-                    
-                    <div class="auth-tab-content active" id="login-tab-content">
-                        <form id="login-form">
-                            <div class="form-group">
-                                <label class="form-label">البريد الإلكتروني</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-envelope"></i>
-                                    <input type="email" class="form-input" id="login-email" required autocomplete="email">
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">كلمة المرور</label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" class="form-input" id="login-password" required autocomplete="current-password">
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-options">
-                                <label class="checkbox-container">
-                                    <input type="checkbox" id="remember-me">
-                                    <span class="checkmark"></span>
-                                    <span>تذكرني</span>
-                                </label>
-                                <button type="button" class="btn-link" id="forgot-password-btn">نسيت كلمة المرور؟</button>
-                            </div>
-                            
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-primary btn-block btn-animated">
-                                    <span>تسجيل الدخول</span>
-                                    <i class="fas fa-sign-in-alt"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    
-                    <div class="auth-tab-content" id="register-tab-content">
-                        <form id="register-form">
-                            <div class="form-group">
-                                <label class="form-label">الاسم الكامل</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-user"></i>
-                                    <input type="text" class="form-input" id="register-name" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">البريد الإلكتروني</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-envelope"></i>
-                                    <input type="email" class="form-input" id="register-email" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">كلمة المرور</label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" class="form-input" id="register-password" required>
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">تأكيد كلمة المرور</label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" class="form-input" id="register-confirm-password" required>
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">رمز المسؤول <small>(مطلوب للمستخدم الأول أو للمسؤول)</small></label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-key"></i>
-                                    <input type="password" class="form-input" id="register-admin-code">
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">نوع المستخدم</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-users-cog"></i>
-                                    <select class="form-select" id="register-user-type">
-                                        <option value="user">مستخدم عادي</option>
-                                        <option value="manager">مدير</option>
-                                        <option value="admin">مسؤول</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-primary btn-block btn-animated">
-                                    <span>إنشاء حساب</span>
-                                    <i class="fas fa-user-plus"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="auth-footer">
-                    <p>نظام الاستثمار المتكامل &copy; ${new Date().getFullYear()} | <span class="version-info">الإصدار ${AUTH_SYSTEM_VERSION}</span></p>
-                </div>
-            </div>
-            
-            <div class="auth-notification">
-                <div class="auth-notification-content">
-                    <i class="auth-notification-icon"></i>
-                    <span class="auth-notification-message"></span>
-                </div>
-                <button class="auth-notification-close">&times;</button>
-            </div>
-        `;
-        
-        // إضافة عنصر الشاشة إلى الصفحة
-        document.body.appendChild(loginScreen);
-        
-        // إضافة مستمعي الأحداث لشاشة تسجيل الدخول
-        setupLoginScreenListeners(loginScreen);
-        
-        // إظهار الشاشة بتأثير حركي
-        setTimeout(() => {
-            loginScreen.classList.add('active');
-        }, 10);
-    }
-    
-    /**
-     * تحديث شاشة تسجيل الدخول الموجودة
-     * @param {HTMLElement} loginScreen - عنصر شاشة تسجيل الدخول
-     */
-    function updateLoginScreen(loginScreen) {
-        // التحقق مما إذا كانت الشاشة تحتاج إلى تحديث (مقارنة بالإصدار القديم)
-        if (!loginScreen.querySelector('.auth-welcome')) {
-            // إذا كانت الشاشة قديمة، نقوم بإزالتها وإنشاء واحدة جديدة
-            loginScreen.parentNode.removeChild(loginScreen);
-            createEnhancedLoginScreen();
-        }
-    }
-
-    /**
-     * إضافة مستمعي الأحداث لشاشة تسجيل الدخول
-     * @param {HTMLElement} loginScreen - عنصر شاشة تسجيل الدخول
-     */
-    function setupLoginScreenListeners(loginScreen) {
-        // التبديل بين تبويبات تسجيل الدخول والتسجيل
-        const authTabs = loginScreen.querySelectorAll('.auth-tab');
-        authTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                // إزالة الفئة النشطة من جميع التبويبات
-                authTabs.forEach(t => t.classList.remove('active'));
-                
-                // إضافة الفئة النشطة للتبويب المحدد
-                this.classList.add('active');
-                
-                // إخفاء جميع محتويات التبويبات
-                const tabContents = loginScreen.querySelectorAll('.auth-tab-content');
-                tabContents.forEach(content => content.classList.remove('active'));
-                
-                // إظهار محتوى التبويب المحدد
-                const tabName = this.getAttribute('data-tab');
-                const selectedTabContent = loginScreen.querySelector(`#${tabName}-tab-content`);
-                if (selectedTabContent) {
-                    selectedTabContent.classList.add('active');
-                    
-                    // التركيز التلقائي على أول حقل في التبويب
-                    const firstInput = selectedTabContent.querySelector('input:not([type="hidden"])');
-                    if (firstInput) {
-                        firstInput.focus();
-                    }
-                }
-            });
-        });
-        
-        // إظهار/إخفاء كلمة المرور
-        const togglePasswordButtons = loginScreen.querySelectorAll('.toggle-password');
-        togglePasswordButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const passwordInput = this.parentElement.querySelector('input');
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    this.querySelector('i').classList.remove('fa-eye');
-                    this.querySelector('i').classList.add('fa-eye-slash');
-                } else {
-                    passwordInput.type = 'password';
-                    this.querySelector('i').classList.remove('fa-eye-slash');
-                    this.querySelector('i').classList.add('fa-eye');
-                }
-            });
-        });
-        
-        // نموذج تسجيل الدخول
-        const loginForm = loginScreen.querySelector('#login-form');
-        if (loginForm) {
-            loginForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const emailInput = loginScreen.querySelector('#login-email');
-                const passwordInput = loginScreen.querySelector('#login-password');
-                const rememberMeCheckbox = loginScreen.querySelector('#remember-me');
-                
-                if (!emailInput || !passwordInput) {
-                    showAuthNotification('خطأ في النموذج: بعض الحقول المطلوبة غير موجودة', 'error');
-                    return;
-                }
-                
-                const email = emailInput.value/**
- * enhanced-auth-system.js
- * نظام المصادقة والأمان المحسن لتطبيق نظام الاستثمار المتكامل
- * يوفر وظائف إدارة المستخدمين، تسجيل الدخول، والتحكم بالصلاحيات
- * مع واجهة مستخدم مُحسنة وتجربة استخدام أفضل
+/**
+ * أنماط CSS لنظام المصادقة والأمان
+ * نظام الاستثمار المتكامل
  */
 
-// ثوابت النظام
-const AUTH_SYSTEM_VERSION = "2.0.0";
-const AUTH_TOKEN_KEY = "auth_token";
-const AUTH_USER_KEY = "auth_user";
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 دقيقة بالمللي ثانية
+/* ===== المتغيرات والألوان الرئيسية ===== */
+:root {
+    --primary-color: #3b82f6;
+    --primary-color-dark: #2563eb;
+    --primary-color-light: #60a5fa;
+    --secondary-color: #6b7280;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #06b6d4;
+    --bg-color: #f8fafc;
+    --text-color: #1e293b;
+    --text-color-light: #64748b;
+    --border-color: #e2e8f0;
+    --input-bg: #fff;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --font-main: 'Tajawal', sans-serif;
+}
 
-// ثوابت لأنواع المستخدمين وصلاحياتهم
-const USER_TYPES = {
-    ADMIN: 'admin',    // مسؤول كامل الصلاحيات
-    MANAGER: 'manager', // مدير بصلاحيات محدودة
-    USER: 'user'       // مستخدم عادي
-};
+/* ===== شاشة تسجيل الدخول ===== */
+.auth-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    direction: rtl;
+    background: linear-gradient(135deg, #f8fafc, #3b82f6);
+}
 
-// الصلاحيات لكل نوع مستخدم
-const PERMISSIONS = {
-    [USER_TYPES.ADMIN]: {
-        canCreateUsers: true,
-        canDeleteUsers: true,
-        canManageSettings: true,
-        canDeleteInvestors: true,
-        canViewAllData: true,
-        canExportData: true,
-        canImportData: true,
-        canCreateBackup: true,
-        canRestoreBackup: true
-    },
-    [USER_TYPES.MANAGER]: {
-        canCreateUsers: false,
-        canDeleteUsers: false,
-        canManageSettings: true,
-        canDeleteInvestors: true,
-        canViewAllData: true,
-        canExportData: true,
-        canImportData: true,
-        canCreateBackup: true,
-        canRestoreBackup: false
-    },
-    [USER_TYPES.USER]: {
-        canCreateUsers: false,
-        canDeleteUsers: false,
-        canManageSettings: false,
-        canDeleteInvestors: false,
-        canViewAllData: true,
-        canExportData: true,
-        canImportData: false,
-        canCreateBackup: false,
-        canRestoreBackup: false
+.auth-container {
+    width: 100%;
+    max-width: 450px;
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--primary-color);
+}
+
+.auth-logo i {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.auth-logo span {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.auth-tabs {
+    display: flex;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 0.75rem;
+    text-align: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-color-light);
+    transition: all 0.3s ease;
+}
+
+.auth-tab.active {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.auth-tab-content {
+    display: none;
+}
+
+.auth-tab-content.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: var(--text-color-light);
+    font-size: 0.9rem;
+}
+
+/* ===== نماذج المصادقة ===== */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.form-input.error {
+    border-color: var(--danger-color);
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 0.75rem center;
+    background-size: 1rem;
+    padding-left: 2.5rem;
+    transition: border-color 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.btn i {
+    margin-left: 0.5rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-outline:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+}
+
+.btn-info {
+    background-color: var(--info-color);
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #0891b2;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* ===== حقل كلمة المرور ===== */
+.password-input-container {
+    position: relative;
+}
+
+.toggle-password {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-color-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.toggle-password:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.toggle-password i {
+    margin: 0;
+}
+
+/* ===== إشعارات المصادقة ===== */
+.auth-notification {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background-color: white;
+    box-shadow: var(--shadow-md);
+    transition: top 0.5s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+}
+
+.auth-notification.show {
+    top: 1.5rem;
+}
+
+.auth-notification.success {
+    background-color: #d4edda;
+    color: #155724;
+    border-right: 4px solid var(--success-color);
+}
+
+.auth-notification.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-right: 4px solid var(--danger-color);
+}
+
+.auth-notification.warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border-right: 4px solid var(--warning-color);
+}
+
+.auth-notification.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border-right: 4px solid var(--info-color);
+}
+
+.auth-notification-content {
+    display: flex;
+    align-items: center;
+}
+
+.auth-notification-content i {
+    margin-left: 0.75rem;
+    font-size: 1.25rem;
+}
+
+.auth-notification-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+}
+
+.auth-notification-close:hover {
+    opacity: 1;
+}
+
+/* ===== النوافذ المنبثقة ===== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    direction: rtl;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    width: 90%;
+    max-width: 500px;
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: fadeInUp 0.3s ease;
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-color-light);
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+    color: var(--danger-color);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* ===== قائمة المستخدم ===== */
+.user-info {
+    display: flex;
+    align-items: center;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown-toggle {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: background-color 0.3s ease;
+}
+
+.dropdown-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-left: 0.75rem;
+}
+
+.user-avatar.small {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.875rem;
+}
+
+.user-avatar.medium {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+}
+
+.user-avatar.large {
+    width: 4rem;
+    height: 4rem;
+    font-size: 1.5rem;
+}
+
+.user-name {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.user-type {
+    color: var(--text-color-light);
+    font-size: 0.75rem;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 220px;
+    background-color: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: 0.5rem 0;
+    display: none;
+    z-index: 100;
+    margin-top: 0.5rem;
+}
+
+.dropdown.active .dropdown-menu {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem 1rem;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-item i {
+    margin-left: 0.75rem;
+    width: 1.25rem;
+    text-align: center;
+    color: var(--text-color-light);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 0.5rem 0;
+}
+
+/* ===== الملف الشخصي ===== */
+.profile-avatar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.avatar-circle {
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-left: 1.25rem;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-info h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-color);
+}
+
+.user-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.user-type-badge.admin {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.user-type-badge.manager {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.user-type-badge.user {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+/* ===== شاشة القفل ===== */
+.lock-screen-user {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.lock-screen-user h2 {
+    margin: 0.5rem 0 0.25rem 0;
+    color: var(--text-color);
+}
+
+.lock-screen-user p {
+    margin: 0;
+    color: var(--text-color-light);
+    font-size: 0.875rem;
+}
+
+/* ===== صفحة إدارة المستخدمين ===== */
+.user-info-cell {
+    display: flex;
+    align-items: center;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.375rem;
+}
+
+/* ===== سجل الأحداث ===== */
+.log-details {
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border-radius: var(--radius-md);
+}
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.log-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.log-badge.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.log-badge.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.log-badge.primary {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+.log-badge.warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.log-badge.danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.log-timestamp {
+    color: var(--text-color-light);
+    font-size: 0.875rem;
+}
+
+.log-details-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.log-details-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.log-details-section h4 {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.user-info-detail {
+    display: flex;
+    align-items: center;
+}
+
+.log-details-section pre {
+    background-color: #f1f5f9;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    overflow: auto;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* ===== التنقل بين الصفحات ===== */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.page-info {
+    color: var(--text-color);
+}
+
+/* ===== الشارات ===== */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-primary {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.badge-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-secondary {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+/* ===== جدول المستخدمين ===== */
+.admin-row {
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.manager-row {
+    background-color: rgba(245, 158, 11, 0.05);
+}
+
+/* ===== صف عمليات الجداول ===== */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    background-color: white;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th,
+table td {
+    padding: 0.75rem 1rem;
+    text-align: right;
+}
+
+table th {
+    color: var(--text-color);
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid var(--border-color);
+}
+
+table td {
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* ===== الحالات العامة ===== */
+.text-center {
+    text-align: center;
+}
+
+.text-danger {
+    color: var(--danger-color);
+}
+
+.text-success {
+    color: var(--success-color);
+}
+
+.text-warning {
+    color: var(--warning-color);
+}
+
+.text-info {
+    color: var(--info-color);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ===== لودر التحميل ===== */
+.loader {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+/* ===== الرسوم المتحركة ===== */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
     }
-};
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-// رمز المسؤول الافتراضي - يمكن تغييره لاحقاً
-let ADMIN_CODE = "admin1234";
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
-// كائن نظام المصادقة والأمان
-const AuthSystem = (function() {
-    // المتغيرات الخاصة
-    let currentUser = null;
-    let isInitialized = false;
-    let authStateListeners = [];
-    let databaseRef = null;
-    let storageRef = null;
-    let sessionTimeoutId = null;
-    let lastActivity = Date.now();
+/* ===== التوافق مع الأجهزة الصغيرة ===== */
+@media (max-width: 768px) {
+    .auth-container {
+        max-width: 90%;
+        padding: 1.5rem;
+    }
     
-    /**
-     * تحميل بيانات المستخدم من التخزين المحلي عند التهيئة
-     */
-    function loadUserFromLocalStorage() {
-        try {
-            const storedUser = localStorage.getItem(AUTH_USER_KEY);
-            const authToken = localStorage.getItem(AUTH_TOKEN_KEY);
-            
-            if (storedUser && authToken) {
-                const userData = JSON.parse(storedUser);
-                
-                // التحقق من انتهاء صلاحية الجلسة
-                if (userData.sessionExpiry && new Date(userData.sessionExpiry) > new Date()) {
-                    console.log("تم استعادة جلسة المستخدم من التخزين المحلي");
-                    currentUser = userData;
-                    
-                    // تمديد مدة الجلسة
-                    refreshUserSession();
-                    return true;
-                } else {
-                    console.log("انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول");
-                    clearUserSession();
-                    return false;
-                }
-            }
-            
-            return false;
-        } catch (error) {
-            console.error("خطأ في تحميل بيانات المستخدم من التخزين المحلي:", error);
-            clearUserSession();
-            return false;
-        }
+    .modal {
+        width: 95%;
     }
     
-    /**
-     * حفظ بيانات المستخدم في التخزين المحلي
-     * @param {Object} user - بيانات المستخدم
-     * @param {string} token - رمز المصادقة
-     */
-    function saveUserToLocalStorage(user, token) {
-        try {
-            // إضافة وقت انتهاء الجلسة
-            const sessionExpiry = new Date();
-            sessionExpiry.setTime(sessionExpiry.getTime() + SESSION_TIMEOUT);
-            user.sessionExpiry = sessionExpiry.toISOString();
-            
-            localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-            localStorage.setItem(AUTH_TOKEN_KEY, token);
-        } catch (error) {
-            console.error("خطأ في حفظ بيانات المستخدم في التخزين المحلي:", error);
-        }
+    .user-avatar {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.875rem;
     }
     
-    /**
-     * مسح بيانات المستخدم من التخزين المحلي
-     */
-    function clearUserSession() {
-        localStorage.removeItem(AUTH_USER_KEY);
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        
-        if (sessionTimeoutId) {
-            clearTimeout(sessionTimeoutId);
-            sessionTimeoutId = null;
-        }
+    .avatar-circle {
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 1.25rem;
     }
     
-    /**
-     * تحديث جلسة المستخدم
-     */
-    function refreshUserSession() {
-        if (!currentUser) return;
-        
-        // تحديث وقت النشاط الأخير
-        lastActivity = Date.now();
-        
-        // إعادة ضبط مؤقت انتهاء الجلسة
-        if (sessionTimeoutId) {
-            clearTimeout(sessionTimeoutId);
-        }
-        
-        // تحديث وقت انتهاء الجلسة في التخزين المحلي
-        const sessionExpiry = new Date();
-        sessionExpiry.setTime(sessionExpiry.getTime() + SESSION_TIMEOUT);
-        currentUser.sessionExpiry = sessionExpiry.toISOString();
-        
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(currentUser));
-        
-        // إعداد مؤقت جديد للجلسة
-        sessionTimeoutId = setTimeout(() => {
-            const timeElapsed = Date.now() - lastActivity;
-            
-            if (timeElapsed >= SESSION_TIMEOUT) {
-                console.log("انتهت مدة الجلسة بسبب عدم النشاط");
-                
-                // بدلاً من تسجيل الخروج مباشرة، نقوم بعرض شاشة القفل للتحقق
-                showLockScreen();
-            }
-        }, SESSION_TIMEOUT);
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
     }
     
-    /**
-     * تهيئة نظام المصادقة
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل التهيئة
-     */
-    function initialize() {
-        console.log(`تهيئة نظام المصادقة والأمان (الإصدار ${AUTH_SYSTEM_VERSION})...`);
-        
-        return new Promise((resolve, reject) => {
-            if (isInitialized) {
-                resolve(true);
-                return;
-            }
-
-            try {
-                // إضافة مستمع النشاط لتتبع نشاط المستخدم
-                addActivityListener();
-                
-                // محاولة استرجاع بيانات المستخدم من التخزين المحلي
-                const userLoaded = loadUserFromLocalStorage();
-                
-                // التحقق من تهيئة Firebase مسبقاً
-                if (!firebase.apps.length) {
-                    // التكوين يجب أن يكون موجوداً بالفعل في الصفحة
-                    if (typeof firebaseConfig === 'undefined') {
-                        console.warn("لم يتم العثور على تكوين Firebase. سيتم استخدام وضع التخزين المحلي فقط.");
-                        
-                        // إذا كان المستخدم متوفر في التخزين المحلي، نستمر
-                        if (userLoaded) {
-                            isInitialized = true;
-                            updateUIForUser();
-                            notifyAuthStateListeners(currentUser);
-                            resolve(true);
-                            return;
-                        } else {
-                            // عرض شاشة تسجيل الدخول في حالة عدم وجود مستخدم مخزن
-                            showLoginScreen();
-                            isInitialized = true;
-                            resolve(true);
-                            return;
-                        }
-                    }
-                    
-                    // تهيئة Firebase
-                    firebase.initializeApp(firebaseConfig);
-                }
-                
-                // إنشاء الإشارة إلى قاعدة البيانات
-                databaseRef = firebase.database();
-                storageRef = firebase.storage();
-                
-                // التحقق من حالة المصادقة الحالية في Firebase
-                firebase.auth().onAuthStateChanged(user => {
-                    if (user) {
-                        // الحصول على بيانات المستخدم من قاعدة البيانات
-                        getUserData(user.uid)
-                            .then(userData => {
-                                currentUser = {
-                                    uid: user.uid,
-                                    email: user.email,
-                                    displayName: user.displayName || userData.fullName,
-                                    photoURL: user.photoURL,
-                                    type: userData.type || USER_TYPES.USER,
-                                    permissions: PERMISSIONS[userData.type || USER_TYPES.USER],
-                                    metadata: userData
-                                };
-                                
-                                // حفظ بيانات المستخدم في التخزين المحلي
-                                saveUserToLocalStorage(currentUser, user.refreshToken);
-                                
-                                // تحديث واجهة المستخدم
-                                updateUIForUser();
-                                
-                                // إخطار المستمعين بتغيير حالة المصادقة
-                                notifyAuthStateListeners(currentUser);
-                                
-                                console.log(`تم تسجيل الدخول كـ ${currentUser.displayName || currentUser.email}`);
-                                showNotification(`مرحباً بك ${currentUser.displayName || currentUser.email}!`, 'success');
-                            })
-                            .catch(error => {
-                                console.error('خطأ في الحصول على بيانات المستخدم:', error);
-                                
-                                // تعيين معلومات المستخدم الأساسية
-                                currentUser = {
-                                    uid: user.uid,
-                                    email: user.email,
-                                    displayName: user.displayName || user.email,
-                                    photoURL: user.photoURL,
-                                    type: USER_TYPES.USER,
-                                    permissions: PERMISSIONS[USER_TYPES.USER]
-                                };
-                                
-                                // حفظ بيانات المستخدم في التخزين المحلي
-                                saveUserToLocalStorage(currentUser, user.refreshToken);
-                                
-                                // تحديث واجهة المستخدم
-                                updateUIForUser();
-                                
-                                // إخطار المستمعين بتغيير حالة المصادقة
-                                notifyAuthStateListeners(currentUser);
-                            });
-                    } else {
-                        currentUser = null;
-                        
-                        // مسح بيانات المستخدم من التخزين المحلي
-                        clearUserSession();
-                        
-                        // تحديث واجهة المستخدم
-                        updateUIForUser();
-                        
-                        // إخطار المستمعين بتغيير حالة المصادقة
-                        notifyAuthStateListeners(null);
-                        
-                        console.log('لم يتم تسجيل الدخول');
-                    }
-                });
-                
-                isInitialized = true;
-                resolve(true);
-            } catch (error) {
-                console.error('خطأ في تهيئة نظام المصادقة:', error);
-                
-                // في حالة الفشل، نعود إلى وضع التخزين المحلي إذا كان المستخدم موجوداً
-                if (userLoaded) {
-                    isInitialized = true;
-                    updateUIForUser();
-                    notifyAuthStateListeners(currentUser);
-                    resolve(true);
-                } else {
-                    showLoginScreen();
-                    reject(error);
-                }
-            }
-        });
+    .form-actions button {
+        width: 100%;
     }
-
-    /**
-     * إضافة مستمع للنشاط لتجديد الجلسة
-     */
-    function addActivityListener() {
-        const events = ['mousedown', 'keypress', 'scroll', 'touchstart'];
-        
-        events.forEach(event => {
-            document.addEventListener(event, refreshUserSession, { passive: true });
-        });
-    }
-
-    /**
-     * إنشاء حساب جديد
-     * @param {string} email - البريد الإلكتروني
-     * @param {string} password - كلمة المرور
-     * @param {string} fullName - الاسم الكامل
-     * @param {string} adminCode - رمز المسؤول (مطلوب للإنشاء الأولي أو حسابات المسؤولين)
-     * @param {string} userType - نوع المستخدم (مسؤول، مدير، مستخدم)
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function signup(email, password, fullName, adminCode, userType = USER_TYPES.USER) {
-        return new Promise((resolve, reject) => {
-            // التحقق من وجود مستخدمين
-            checkIfFirstUser()
-                .then(isFirstUser => {
-                    // التحقق من رمز المسؤول إذا لم يكن المستخدم الأول أو إذا طلب صلاحيات مسؤول
-                    if ((!isFirstUser || userType === USER_TYPES.ADMIN) && adminCode !== ADMIN_CODE) {
-                        reject(new Error('رمز المسؤول غير صحيح'));
-                        return;
-                    }
-                    
-                    // إذا كان المستخدم الأول، فسيكون مسؤولاً بغض النظر عن النوع المطلوب
-                    if (isFirstUser) {
-                        userType = USER_TYPES.ADMIN;
-                    }
-                    
-                    // التحقق من صلاحية إنشاء المستخدم إذا لم يكن المستخدم الأول
-                    if (!isFirstUser && currentUser) {
-                        // التحقق من صلاحية إنشاء المستخدمين
-                        if (!currentUser.permissions.canCreateUsers) {
-                            reject(new Error('ليس لديك صلاحية إنشاء مستخدمين جدد'));
-                            return;
-                        }
-                        
-                        // التحقق من صلاحية إنشاء مسؤولين
-                        if (userType === USER_TYPES.ADMIN && currentUser.type !== USER_TYPES.ADMIN) {
-                            reject(new Error('ليس لديك صلاحية إنشاء مستخدمين بصلاحيات مسؤول'));
-                            return;
-                        }
-                    }
-                    
-                    // الاستمرار في العملية حسب وضع التشغيل
-                    if (firebase.apps.length > 0) {
-                        // إنشاء المستخدم في Firebase
-                        firebase.auth().createUserWithEmailAndPassword(email, password)
-                            .then(userCredential => {
-                                const user = userCredential.user;
-                                
-                                // تحديث اسم المستخدم
-                                return user.updateProfile({
-                                    displayName: fullName
-                                }).then(() => user);
-                            })
-                            .then(user => {
-                                // حفظ بيانات المستخدم في قاعدة البيانات
-                                const userData = {
-                                    uid: user.uid,
-                                    email: email,
-                                    fullName: fullName,
-                                    type: userType,
-                                    createdAt: new Date().toISOString(),
-                                    lastLogin: new Date().toISOString()
-                                };
-                                
-                                return databaseRef.ref(`users/${user.uid}/profile`).set(userData)
-                                    .then(() => {
-                                        // إنشاء سجل بإنشاء المستخدم
-                                        const logEntry = {
-                                            action: 'user_created',
-                                            timestamp: new Date().toISOString(),
-                                            userId: user.uid,
-                                            userEmail: email,
-                                            userType: userType,
-                                            createdBy: currentUser ? currentUser.uid : 'self_registration'
-                                        };
-                                        
-                                        // إضافة السجل إلى تاريخ الأحداث
-                                        return databaseRef.ref('system_logs/users').push(logEntry)
-                                            .then(() => {
-                                                resolve({
-                                                    user: user,
-                                                    userData: userData
-                                                });
-                                            });
-                                    });
-                            })
-                            .catch(error => {
-                                console.error('خطأ في إنشاء المستخدم:', error);
-                                reject(error);
-                            });
-                    } else {
-                        // وضع التخزين المحلي (بدون Firebase)
-                        // إنشاء معرف فريد للمستخدم
-                        const userId = 'local_' + Date.now().toString();
-                        
-                        // إنشاء بيانات المستخدم
-                        const userData = {
-                            uid: userId,
-                            email: email,
-                            displayName: fullName,
-                            fullName: fullName,
-                            type: userType,
-                            permissions: PERMISSIONS[userType],
-                            createdAt: new Date().toISOString(),
-                            lastLogin: new Date().toISOString(),
-                            password: hashPassword(password) // تخزين كلمة المرور بشكل آمن
-                        };
-                        
-                        // حفظ المستخدم في التخزين المحلي
-                        const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                        localUsers[email] = userData;
-                        localStorage.setItem('local_users', JSON.stringify(localUsers));
-                        
-                        // تسجيل الدخول مباشرة بعد إنشاء الحساب
-                        currentUser = userData;
-                        saveUserToLocalStorage(userData, 'local_token_' + Date.now());
-                        updateUIForUser();
-                        notifyAuthStateListeners(currentUser);
-                        
-                        resolve({
-                            user: {
-                                uid: userId,
-                                email: email,
-                                displayName: fullName
-                            },
-                            userData: userData
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('خطأ في التحقق من وجود مستخدمين:', error);
-                    reject(error);
-                });
-        });
-    }
-
-    /**
-     * تسجيل الدخول إلى الحساب
-     * @param {string} email - البريد الإلكتروني
-     * @param {string} password - كلمة المرور
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function login(email, password) {
-        return new Promise((resolve, reject) => {
-            // محاولة تسجيل الدخول بناءً على وضع التشغيل
-            if (firebase.apps.length > 0) {
-                // تسجيل الدخول باستخدام Firebase
-                firebase.auth().signInWithEmailAndPassword(email, password)
-                    .then(userCredential => {
-                        const user = userCredential.user;
-                        
-                        // تحديث وقت آخر تسجيل دخول
-                        databaseRef.ref(`users/${user.uid}/profile/lastLogin`).set(new Date().toISOString());
-                        
-                        // إنشاء سجل بتسجيل الدخول
-                        const logEntry = {
-                            action: 'user_login',
-                            timestamp: new Date().toISOString(),
-                            userId: user.uid,
-                            userEmail: email,
-                            ip: window.userIP || 'unknown',
-                            userAgent: navigator.userAgent
-                        };
-                        
-                        // إضافة السجل إلى تاريخ الأحداث
-                        return databaseRef.ref('system_logs/authentication').push(logEntry)
-                            .then(() => {
-                                // الحصول على بيانات المستخدم من قاعدة البيانات
-                                return getUserData(user.uid)
-                                    .then(userData => {
-                                        const userObj = {
-                                            uid: user.uid,
-                                            email: user.email,
-                                            displayName: user.displayName || userData.fullName,
-                                            photoURL: user.photoURL,
-                                            type: userData.type || USER_TYPES.USER,
-                                            permissions: PERMISSIONS[userData.type || USER_TYPES.USER],
-                                            metadata: userData
-                                        };
-                                        
-                                        // حفظ بيانات المستخدم في التخزين المحلي
-                                        saveUserToLocalStorage(userObj, user.refreshToken);
-                                        
-                                        // تعيين المستخدم الحالي
-                                        currentUser = userObj;
-                                        
-                                        // تحديث واجهة المستخدم
-                                        updateUIForUser();
-                                        
-                                        // إخطار المستمعين بتغيير حالة المصادقة
-                                        notifyAuthStateListeners(currentUser);
-                                        
-                                        resolve(userObj);
-                                    });
-                            });
-                    })
-                    .catch(error => {
-                        console.error('خطأ في تسجيل الدخول:', error);
-                        reject(error);
-                    });
-            } else {
-                // وضع التخزين المحلي (بدون Firebase)
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                const user = localUsers[email];
-                
-                if (!user) {
-                    reject(new Error('البريد الإلكتروني غير مسجل'));
-                    return;
-                }
-                
-                // التحقق من كلمة المرور
-                if (!verifyPassword(password, user.password)) {
-                    reject(new Error('كلمة المرور غير صحيحة'));
-                    return;
-                }
-                
-                // تحديث وقت آخر تسجيل دخول
-                user.lastLogin = new Date().toISOString();
-                localUsers[email] = user;
-                localStorage.setItem('local_users', JSON.stringify(localUsers));
-                
-                // تعيين المستخدم الحالي
-                currentUser = user;
-                
-                // حفظ بيانات المستخدم في التخزين المحلي
-                saveUserToLocalStorage(user, 'local_token_' + Date.now());
-                
-                // تحديث واجهة المستخدم
-                updateUIForUser();
-                
-                // إخطار المستمعين بتغيير حالة المصادقة
-                notifyAuthStateListeners(currentUser);
-                
-                resolve(user);
-            }
-        });
-    }
-
-    /**
-     * تبسيط لتشفير كلمة المرور (للوضع المحلي فقط)
-     * ملاحظة: هذه ليست طريقة آمنة للغاية في بيئة الإنتاج
-     * @param {string} password - كلمة المرور المراد تشفيرها
-     * @returns {string} - كلمة المرور المشفرة
-     */
-    function hashPassword(password) {
-        // في الإنتاج، يجب استخدام خوارزميات أقوى
-        let hash = 0;
-        for (let i = 0; i < password.length; i++) {
-            const char = password.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // تحويل إلى 32 بت
-        }
-        return hash.toString(16);
-    }
-
-    /**
-     * التحقق من كلمة المرور (للوضع المحلي فقط)
-     * @param {string} password - كلمة المرور المدخلة
-     * @param {string} hashedPassword - كلمة المرور المشفرة
-     * @returns {boolean} - هل كلمة المرور صحيحة
-     */
-    function verifyPassword(password, hashedPassword) {
-        return hashPassword(password) === hashedPassword;
-    }
-
-    /**
-     * تسجيل الخروج من الحساب
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function logout() {
-        return new Promise((resolve, reject) => {
-            try {
-                // تسجيل حدث تسجيل الخروج
-                if (currentUser) {
-                    const logEntry = {
-                        action: 'user_logout',
-                        timestamp: new Date().toISOString(),
-                        userId: currentUser.uid,
-                        userEmail: currentUser.email
-                    };
-                    
-                    // تخزين السجل حسب وضع التشغيل
-                    if (firebase.apps.length > 0 && databaseRef) {
-                        databaseRef.ref('system_logs/authentication').push(logEntry);
-                    }
-                }
-                
-                // مسح بيانات المستخدم من التخزين المحلي
-                clearUserSession();
-                
-                // تعيين المستخدم الحالي إلى null
-                currentUser = null;
-                
-                // تحديث واجهة المستخدم
-                updateUIForUser();
-                
-                // إخطار المستمعين بتغيير حالة المصادقة
-                notifyAuthStateListeners(null);
-                
-                // تسجيل الخروج من Firebase إذا كان متاحاً
-                if (firebase.apps.length > 0) {
-                    firebase.auth().signOut()
-                        .then(() => {
-                            console.log('تم تسجيل الخروج بنجاح');
-                            resolve();
-                        })
-                        .catch(error => {
-                            console.error('خطأ في تسجيل الخروج من Firebase:', error);
-                            // نستمر بالرغم من الخطأ لأننا قمنا بالفعل بمسح البيانات المحلية
-                            resolve();
-                        });
-                } else {
-                    console.log('تم تسجيل الخروج بنجاح');
-                    resolve();
-                }
-            } catch (error) {
-                console.error('خطأ في تسجيل الخروج:', error);
-                // نستمر بالرغم من الخطأ لتجنب بقاء المستخدم في حالة غير متسقة
-                currentUser = null;
-                updateUIForUser();
-                notifyAuthStateListeners(null);
-                resolve();
-            }
-        });
-    }
-
-    /**
-     * التحقق من وجود مستخدمين في النظام
-     * @returns {Promise<boolean>} وعد يحتوي على قيمة بولية تشير إلى ما إذا كان هذا هو المستخدم الأول
-     */
-    function checkIfFirstUser() {
-        return new Promise((resolve) => {
-            // التحقق حسب وضع التشغيل
-            if (firebase.apps.length > 0 && databaseRef) {
-                databaseRef.ref('users').once('value')
-                    .then(snapshot => {
-                        resolve(!snapshot.exists());
-                    })
-                    .catch(error => {
-                        console.error('خطأ في التحقق من وجود مستخدمين:', error);
-                        resolve(false);
-                    });
-            } else {
-                // التحقق في وضع التخزين المحلي
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                resolve(Object.keys(localUsers).length === 0);
-            }
-        });
-    }
-
-    /**
-     * الحصول على بيانات المستخدم من قاعدة البيانات
-     * @param {string} userId - معرف المستخدم
-     * @returns {Promise<Object>} وعد يحتوي على بيانات المستخدم
-     */
-    function getUserData(userId) {
-        return new Promise((resolve, reject) => {
-            if (firebase.apps.length > 0 && databaseRef) {
-                databaseRef.ref(`users/${userId}/profile`).once('value')
-                    .then(snapshot => {
-                        const userData = snapshot.val();
-                        if (!userData) {
-                            reject(new Error('لم يتم العثور على بيانات المستخدم'));
-                            return;
-                        }
-                        resolve(userData);
-                    })
-                    .catch(error => {
-                        console.error('خطأ في الحصول على بيانات المستخدم:', error);
-                        reject(error);
-                    });
-            } else {
-                // التحقق في وضع التخزين المحلي
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                
-                // البحث عن المستخدم بواسطة المعرف
-                let userData = null;
-                Object.values(localUsers).forEach(user => {
-                    if (user.uid === userId) {
-                        userData = user;
-                    }
-                });
-                
-                if (userData) {
-                    resolve(userData);
-                } else {
-                    reject(new Error('لم يتم العثور على بيانات المستخدم'));
-                }
-            }
-        });
-    }
-
-    /**
-     * تحديث معلومات المستخدم
-     * @param {string} userId - معرف المستخدم
-     * @param {Object} userData - البيانات المراد تحديثها
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function updateUserData(userId, userData) {
-        return new Promise((resolve, reject) => {
-            // التحقق من الصلاحيات
-            if (currentUser.uid !== userId && !currentUser.permissions.canCreateUsers) {
-                reject(new Error('ليس لديك صلاحية تعديل بيانات المستخدمين'));
-                return;
-            }
-            
-            // منع المستخدم من تغيير نوعه إلى مسؤول إلا إذا كان مسؤولاً بالفعل
-            if (userData.type === USER_TYPES.ADMIN && currentUser.type !== USER_TYPES.ADMIN) {
-                reject(new Error('ليس لديك صلاحية تعيين المستخدمين كمسؤولين'));
-                return;
-            }
-            
-            if (firebase.apps.length > 0 && databaseRef) {
-                databaseRef.ref(`users/${userId}/profile`).update(userData)
-                    .then(() => {
-                        // إنشاء سجل بتحديث بيانات المستخدم
-                        const logEntry = {
-                            action: 'user_updated',
-                            timestamp: new Date().toISOString(),
-                            userId: userId,
-                            updatedBy: currentUser.uid,
-                            updatedFields: Object.keys(userData)
-                        };
-                        
-                        // إضافة السجل إلى تاريخ الأحداث
-                        return databaseRef.ref('system_logs/users').push(logEntry)
-                            .then(() => {
-                                // إذا كان المستخدم المحدث هو المستخدم الحالي، نقوم بتحديث البيانات المحلية
-                                if (userId === currentUser.uid) {
-                                    // تحديث بيانات المستخدم الحالي
-                                    Object.assign(currentUser, userData);
-                                    
-                                    // تحديث المستخدم في التخزين المحلي
-                                    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(currentUser));
-                                    
-                                    // تحديث واجهة المستخدم
-                                    updateUIForUser();
-                                }
-                                
-                                resolve();
-                            });
-                    })
-                    .catch(error => {
-                        console.error('خطأ في تحديث بيانات المستخدم:', error);
-                        reject(error);
-                    });
-            } else {
-                // وضع التخزين المحلي
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                
-                // البحث عن المستخدم بواسطة المعرف
-                let userEmail = null;
-                Object.entries(localUsers).forEach(([email, user]) => {
-                    if (user.uid === userId) {
-                        userEmail = email;
-                    }
-                });
-                
-                if (userEmail) {
-                    // تحديث بيانات المستخدم
-                    const updatedUser = { ...localUsers[userEmail], ...userData };
-                    localUsers[userEmail] = updatedUser;
-                    
-                    // حفظ التغييرات
-                    localStorage.setItem('local_users', JSON.stringify(localUsers));
-                    
-                    // إذا كان المستخدم المحدث هو المستخدم الحالي، نقوم بتحديث البيانات المحلية
-                    if (userId === currentUser.uid) {
-                        // تحديث بيانات المستخدم الحالي
-                        Object.assign(currentUser, userData);
-                        
-                        // تحديث المستخدم في التخزين المحلي
-                        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(currentUser));
-                        
-                        // تحديث واجهة المستخدم
-                        updateUIForUser();
-                    }
-                    
-                    resolve();
-                } else {
-                    reject(new Error('لم يتم العثور على المستخدم'));
-                }
-            }
-        });
-    }
-
-    /**
-     * حذف مستخدم
-     * @param {string} userId - معرف المستخدم
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function deleteUser(userId) {
-        return new Promise((resolve, reject) => {
-            // التحقق من الصلاحيات
-            if (!currentUser.permissions.canDeleteUsers) {
-                reject(new Error('ليس لديك صلاحية حذف المستخدمين'));
-                return;
-            }
-            
-            // الحصول على بيانات المستخدم قبل الحذف
-            getUserData(userId)
-                .then(userData => {
-                    // منع حذف المستخدمين المسؤولين إلا من قبل مسؤول آخر
-                    if (userData.type === USER_TYPES.ADMIN && currentUser.type !== USER_TYPES.ADMIN) {
-                        reject(new Error('ليس لديك صلاحية حذف المستخدمين المسؤولين'));
-                        return;
-                    }
-                    
-                    if (firebase.apps.length > 0 && databaseRef) {
-                        // حذف المستخدم من قاعدة البيانات
-                        databaseRef.ref(`users/${userId}`).remove()
-                            .then(() => {
-                                // إنشاء سجل بحذف المستخدم
-                                const logEntry = {
-                                    action: 'user_deleted',
-                                    timestamp: new Date().toISOString(),
-                                    deletedUserId: userId,
-                                    deletedUserEmail: userData.email,
-                                    deletedUserType: userData.type,
-                                    deletedBy: currentUser.uid
-                                };
-                                
-                                // إضافة السجل إلى تاريخ الأحداث
-                                return databaseRef.ref('system_logs/users').push(logEntry)
-                                    .then(() => {
-                                        resolve();
-                                    });
-                            })
-                            .catch(error => {
-                                console.error('خطأ في حذف المستخدم:', error);
-                                reject(error);
-                            });
-                    } else {
-                        // وضع التخزين المحلي
-                        const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                        
-                        // البحث عن المستخدم بواسطة المعرف
-                        let userEmail = null;
-                        Object.entries(localUsers).forEach(([email, user]) => {
-                            if (user.uid === userId) {
-                                userEmail = email;
-                            }
-                        });
-                        
-                        if (userEmail) {
-                            // حذف المستخدم
-                            delete localUsers[userEmail];
-                            
-                            // حفظ التغييرات
-                            localStorage.setItem('local_users', JSON.stringify(localUsers));
-                            
-                            resolve();
-                        } else {
-                            reject(new Error('لم يتم العثور على المستخدم'));
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('خطأ في الحصول على بيانات المستخدم قبل الحذف:', error);
-                    reject(error);
-                });
-        });
-    }
-
-    /**
-     * الحصول على قائمة المستخدمين
-     * @returns {Promise<Array>} وعد يحتوي على قائمة المستخدمين
-     */
-    function getUsers() {
-        return new Promise((resolve, reject) => {
-            // التحقق من الصلاحيات
-            if (!currentUser.permissions.canCreateUsers && !currentUser.permissions.canDeleteUsers && currentUser.type !== USER_TYPES.ADMIN) {
-                reject(new Error('ليس لديك صلاحية عرض قائمة المستخدمين'));
-                return;
-            }
-            
-            if (firebase.apps.length > 0 && databaseRef) {
-                databaseRef.ref('users').once('value')
-                    .then(snapshot => {
-                        const usersData = snapshot.val();
-                        if (!usersData) {
-                            resolve([]);
-                            return;
-                        }
-                        
-                        const usersList = [];
-                        Object.keys(usersData).forEach(userId => {
-                            const user = usersData[userId].profile;
-                            if (user) {
-                                usersList.push({
-                                    uid: userId,
-                                    ...user
-                                });
-                            }
-                        });
-                        
-                        resolve(usersList);
-                    })
-                    .catch(error => {
-                        console.error('خطأ في الحصول على قائمة المستخدمين:', error);
-                        reject(error);
-                    });
-            } else {
-                // وضع التخزين المحلي
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                
-                const usersList = Object.values(localUsers);
-                resolve(usersList);
-            }
-        });
-    }
-
-    /**
-     * تغيير كلمة المرور
-     * @param {string} currentPassword - كلمة المرور الحالية
-     * @param {string} newPassword - كلمة المرور الجديدة
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function changePassword(currentPassword, newPassword) {
-        return new Promise((resolve, reject) => {
-            if (!currentUser) {
-                reject(new Error('لم يتم تسجيل الدخول'));
-                return;
-            }
-            
-            if (firebase.apps.length > 0) {
-                const user = firebase.auth().currentUser;
-                if (!user) {
-                    reject(new Error('لم يتم تسجيل الدخول'));
-                    return;
-                }
-                
-                // إعادة المصادقة قبل تغيير كلمة المرور
-                const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
-                user.reauthenticateWithCredential(credential)
-                    .then(() => {
-                        return user.updatePassword(newPassword);
-                    })
-                    .then(() => {
-                        // إنشاء سجل بتغيير كلمة المرور
-                        const logEntry = {
-                            action: 'password_changed',
-                            timestamp: new Date().toISOString(),
-                            userId: user.uid,
-                            userEmail: user.email
-                        };
-                        
-                        // إضافة السجل إلى تاريخ الأحداث
-                        if (databaseRef) {
-                            return databaseRef.ref('system_logs/authentication').push(logEntry)
-                                .then(() => {
-                                    resolve();
-                                });
-                        } else {
-                            resolve();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('خطأ في تغيير كلمة المرور:', error);
-                        reject(error);
-                    });
-            } else {
-                // وضع التخزين المحلي
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                
-                // البحث عن المستخدم بواسطة البريد الإلكتروني
-                const userEmail = currentUser.email;
-                
-                if (localUsers[userEmail]) {
-                    // التحقق من كلمة المرور الحالية
-                    if (!verifyPassword(currentPassword, localUsers[userEmail].password)) {
-                        reject(new Error('كلمة المرور الحالية غير صحيحة'));
-                        return;
-                    }
-                    
-                    // تحديث كلمة المرور
-                    localUsers[userEmail].password = hashPassword(newPassword);
-                    
-                    // حفظ التغييرات
-                    localStorage.setItem('local_users', JSON.stringify(localUsers));
-                    
-                    resolve();
-                } else {
-                    reject(new Error('لم يتم العثور على المستخدم'));
-                }
-            }
-        });
-    }
-
-    /**
-     * إرسال رسالة إعادة تعيين كلمة المرور
-     * @param {string} email - البريد الإلكتروني
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function resetPassword(email) {
-        return new Promise((resolve, reject) => {
-            if (firebase.apps.length > 0) {
-                firebase.auth().sendPasswordResetEmail(email)
-                    .then(() => {
-                        // إنشاء سجل بطلب إعادة تعيين كلمة المرور
-                        const logEntry = {
-                            action: 'password_reset_requested',
-                            timestamp: new Date().toISOString(),
-                            userEmail: email,
-                            requestedBy: currentUser ? currentUser.uid : 'self'
-                        };
-                        
-                        // إضافة السجل إلى تاريخ الأحداث
-                        if (databaseRef) {
-                            return databaseRef.ref('system_logs/authentication').push(logEntry)
-                                .then(() => {
-                                    resolve();
-                                });
-                        } else {
-                            resolve();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('خطأ في إرسال رسالة إعادة تعيين كلمة المرور:', error);
-                        reject(error);
-                    });
-            } else {
-                // وضع التخزين المحلي - نقوم بإعادة تعيين كلمة المرور مباشرة إلى قيمة افتراضية
-                const localUsers = JSON.parse(localStorage.getItem('local_users') || '{}');
-                
-                if (localUsers[email]) {
-                    // إعادة تعيين كلمة المرور إلى قيمة افتراضية (123456)
-                    localUsers[email].password = hashPassword('123456');
-                    
-                    // حفظ التغييرات
-                    localStorage.setItem('local_users', JSON.stringify(localUsers));
-                    
-                    showNotification('تم إعادة تعيين كلمة المرور إلى: 123456', 'info');
-                    resolve();
-                } else {
-                    reject(new Error('البريد الإلكتروني غير مسجل'));
-                }
-            }
-        });
-    }
-
-    /**
-     * تغيير رمز المسؤول
-     * @param {string} currentAdminCode - رمز المسؤول الحالي
-     * @param {string} newAdminCode - رمز المسؤول الجديد
-     * @returns {Promise} وعد يشير إلى نجاح أو فشل العملية
-     */
-    function changeAdminCode(currentAdminCode, newAdminCode) {
-        return new Promise((resolve, reject) => {
-            // التحقق من الصلاحيات
-            if (currentUser.type !== USER_TYPES.ADMIN) {
-                reject(new Error('ليس لديك صلاحية تغيير رمز المسؤول'));
-                return;
-            }
-            
-            // التحقق من صحة رمز المسؤول الحالي
-            if (currentAdminCode !== ADMIN_CODE) {
-                reject(new Error('رمز المسؤول الحالي غير صحيح'));
-                return;
-            }
-            
-            if (firebase.apps.length > 0 && databaseRef) {
-                // تحديث رمز المسؤول في الإعدادات
-                databaseRef.ref('system_settings/admin_code').set({
-                    code: newAdminCode,
-                    updatedAt: new Date().toISOString(),
-                    updatedBy: currentUser.uid
-                })
-                .then(() => {
-                    // تحديث المتغير المحلي
-                    ADMIN_CODE = newAdminCode;
-                    
-                    // إنشاء سجل بتغيير رمز المسؤول
-                    const logEntry = {
-                        action: 'admin_code_changed',
-                        timestamp: new Date().toISOString(),
-                        updatedBy: currentUser.uid,
-                        userEmail: currentUser.email
-                    };
-                    
-                    // إضافة السجل إلى تاريخ الأحداث
-                    return databaseRef.ref('system_logs/system').push(logEntry)
-                        .then(() => {
-                            resolve();
-                        });
-                })
-                .catch(error => {
-                    console.error('خطأ في تغيير رمز المسؤول:', error);
-                    reject(error);
-                });
-            } else {
-                // وضع التخزين المحلي
-                ADMIN_CODE = newAdminCode;
-                
-                // حفظ الرمز الجديد في التخزين المحلي
-                localStorage.setItem('admin_code', newAdminCode);
-                
-                showNotification('تم تغيير رمز المسؤول بنجاح', 'success');
-                resolve();
-            }
-        });
-    }
-
-    /**
-     * إضافة مستمع لحالة المصادقة
-     * @param {Function} listener - دالة الاستماع
-     */
-    function addAuthStateListener(listener) {
-        if (typeof listener === 'function' && !authStateListeners.includes(listener)) {
-            authStateListeners.push(listener);
-        }
-    }
-
-    /**
-     * إزالة مستمع لحالة المصادقة
-     * @param {Function} listener - دالة الاستماع
-     */
-    function removeAuthStateListener(listener) {
-        const index = authStateListeners.indexOf(listener);
-        if (index !== -1) {
-            authStateListeners.splice(index, 1);
-        }
-    }
-
-    /**
-     * إخطار جميع مستمعي حالة المصادقة
-     * @param {Object|null} user - معلومات المستخدم
-     */
-    function notifyAuthStateListeners(user) {
-        authStateListeners.forEach(listener => {
-            try {
-                listener(user);
-            } catch (error) {
-                console.error('خطأ في مستمع حالة المصادقة:', error);
-            }
-        });
-    }
-
-    /**
-     * تحديث واجهة المستخدم بناءً على حالة المصادقة
-     */
-    function updateUIForUser() {
-        if (currentUser) {
-            // إخفاء شاشة تسجيل الدخول
-            hideLoginScreen();
-            
-            // عرض اسم المستخدم ونوعه في الواجهة
-            updateUserInfo();
-            
-            // تحديث وصول العناصر بناءً على الصلاحيات
-            updateElementsAccess();
-            
-            // تفعيل النشاط التلقائي
-            setupAutoLock();
-        } else {
-            // عرض شاشة تسجيل الدخول
-            showLoginScreen();
-        }
-    }
-
-    /**
-     * عرض شاشة تسجيل الدخول المحسنة
-     */
-    function showLoginScreen() {
-        console.log('عرض شاشة تسجيل الدخول...');
-        
-        const loginScreen = document.getElementById('auth-login-screen');
-        
-        if (!loginScreen) {
-            // إنشاء شاشة تسجيل الدخول المحسنة إذا لم تكن موجودة
-            createEnhancedLoginScreen();
-        } else {
-            // تحديث شاشة تسجيل الدخول الموجودة
-            updateLoginScreen(loginScreen);
-            
-            // إظهار الشاشة
-            loginScreen.style.display = 'flex';
-            
-            // إضافة تأثير حركي
-            setTimeout(() => {
-                loginScreen.classList.add('active');
-            }, 10);
-        }
-        
-        // إخفاء المحتوى الرئيسي
-        const appContent = document.querySelector('.layout');
-        if (appContent) {
-            appContent.style.display = 'none';
-        }
-    }
-
-    /**
-     * إخفاء شاشة تسجيل الدخول
-     */
-    function hideLoginScreen() {
-        const loginScreen = document.getElementById('auth-login-screen');
-        
-        if (loginScreen) {
-            // إضافة تأثير حركي للإخفاء
-            loginScreen.classList.remove('active');
-            
-            // انتظار انتهاء التأثير الحركي
-            setTimeout(() => {
-                loginScreen.style.display = 'none';
-            }, 300);
-        }
-        
-        // إظهار المحتوى الرئيسي
-        const appContent = document.querySelector('.layout');
-        if (appContent) {
-            appContent.style.display = 'flex';
-        }
-    }
-
-    /**
-     * إنشاء شاشة تسجيل الدخول المحسنة
-     */
-    function createEnhancedLoginScreen() {
-        console.log('إنشاء شاشة تسجيل الدخول المحسنة...');
-        
-        // إنشاء عنصر الشاشة
-        const loginScreen = document.createElement('div');
-        loginScreen.id = 'auth-login-screen';
-        loginScreen.className = 'auth-screen';
-        
-        // إضافة محتوى الشاشة
-        loginScreen.innerHTML = `
-            <div class="auth-container">
-                <div class="auth-content">
-                    <div class="auth-header">
-                        <div class="auth-logo">
-                            <i class="fas fa-chart-line"></i>
-                            <span>نظام الاستثمار المتكامل</span>
-                        </div>
-                        <p class="auth-welcome">مرحباً بك في نظام الاستثمار المتكامل</p>
-                    </div>
-                    
-                    <div class="auth-tabs">
-                        <button class="auth-tab active" data-tab="login">تسجيل الدخول</button>
-                        <button class="auth-tab" data-tab="register">إنشاء حساب</button>
-                    </div>
-                    
-                    <div class="auth-tab-content active" id="login-tab-content">
-                        <form id="login-form">
-                            <div class="form-group">
-                                <label class="form-label">البريد الإلكتروني</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-envelope"></i>
-                                    <input type="email" class="form-input" id="login-email" required autocomplete="email">
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">كلمة المرور</label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" class="form-input" id="login-password" required autocomplete="current-password">
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-options">
-                                <label class="checkbox-container">
-                                    <input type="checkbox" id="remember-me">
-                                    <span class="checkmark"></span>
-                                    <span>تذكرني</span>
-                                </label>
-                                <button type="button" class="btn-link" id="forgot-password-btn">نسيت كلمة المرور؟</button>
-                            </div>
-                            
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-primary btn-block btn-animated">
-                                    <span>تسجيل الدخول</span>
-                                    <i class="fas fa-sign-in-alt"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    
-                    <div class="auth-tab-content" id="register-tab-content">
-                        <form id="register-form">
-                            <div class="form-group">
-                                <label class="form-label">الاسم الكامل</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-user"></i>
-                                    <input type="text" class="form-input" id="register-name" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">البريد الإلكتروني</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-envelope"></i>
-                                    <input type="email" class="form-input" id="register-email" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">كلمة المرور</label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" class="form-input" id="register-password" required>
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">تأكيد كلمة المرور</label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" class="form-input" id="register-confirm-password" required>
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">رمز المسؤول <small>(مطلوب للمستخدم الأول أو للمسؤول)</small></label>
-                                <div class="input-with-icon password-input-container">
-                                    <i class="fas fa-key"></i>
-                                    <input type="password" class="form-input" id="register-admin-code">
-                                    <button type="button" class="toggle-password" tabindex="-1">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">نوع المستخدم</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-users-cog"></i>
-                                    <select class="form-select" id="register-user-type">
-                                        <option value="user">مستخدم عادي</option>
-                                        <option value="manager">مدير</option>
-                                        <option value="admin">مسؤول</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-primary btn-block btn-animated">
-                                    <span>إنشاء حساب</span>
-                                    <i class="fas fa-user-plus"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="auth-footer">
-                    <p>نظام الاستثمار المتكامل &copy; ${new Date().getFullYear()} | <span class="version-info">الإصدار ${AUTH_SYSTEM_VERSION}</span></p>
-                </div>
-            </div>
-            
-            <div class="auth-notification">
-                <div class="auth-notification-content">
-                    <i class="auth-notification-icon"></i>
-                    <span class="auth-notification-message"></span>
-                </div>
-                <button class="auth-notification-close">&times;</button>
-            </div>
-        `;
-        
-        // إضافة عنصر الشاشة إلى الصفحة
-        document.body.appendChild(loginScreen);
-        
-        // إضافة مستمعي الأحداث لشاشة تسجيل الدخول
-        setupLoginScreenListeners(loginScreen);
-        
-        // إظهار الشاشة بتأثير حركي
-        setTimeout(() => {
-            loginScreen.classList.add('active');
-        }, 10);
-    }
+}

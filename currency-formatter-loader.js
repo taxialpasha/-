@@ -24,19 +24,15 @@ function formatCurrency(amount, addCurrency = true) {
     
     // إعادة المبلغ مع إضافة العملة إذا تم طلب ذلك
     const formattedAmount = parts.join(',');
-    
-    if (addCurrency) {
-        return `${formattedAmount} ${window.settings?.currency || 'دينار'}`;
-    } else {
-        return formattedAmount;
-    }
+    return addCurrency ? `${formattedAmount} ${settings.currency}` : formattedAmount;
 }
 
 /**
  * تطبيق التنسيق الجديد على جميع المبالغ في التطبيق
  */
 function applyFormatCurrencyEverywhere() {
-    console.log('تطبيق التنسيق الجديد على جميع المبالغ المالية في التطبيق...');
+    // استبدال جميع استخدامات toLocaleString() في التطبيق
+    // بالدالة الجديدة formatCurrency
     
     // تحديث دالة renderInvestorsTable
     window.originalRenderInvestorsTable = window.renderInvestorsTable;
@@ -125,13 +121,22 @@ function applyFormatCurrencyEverywhere() {
                 });
             }
         });
-        
-        if (sortedInvestors.length === 0) {
-            const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = '<td colspan="8" class="text-center">لا يوجد مستثمرين</td>';
-            tableBody.appendChild(emptyRow);
-        }
     };
+    
+    // إضافة الكود الخاص بتفعيل التنسيق الجديد عند تحميل الصفحة
+    console.log('تطبيق التنسيق الجديد على جميع المبالغ المالية في التطبيق...');
+}
+
+/**
+ * تفعيل تنسيق المبالغ المالية عند تحميل الصفحة
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // إضافة دالة تنسيق المبالغ للنافذة لاستخدامها في جميع أنحاء التطبيق
+    window.formatCurrency = formatCurrency;
+    
+    // تطبيق التنسيق الجديد على جميع المبالغ في التطبيق
+    applyFormatCurrencyEverywhere();
+});
     
     // تحديث دالة searchTransactions
     window.originalSearchTransactions = window.searchTransactions;
@@ -222,6 +227,36 @@ function applyFormatCurrencyEverywhere() {
         });
     };
     
+            tableBody.appendChild(row);
+            
+            // إضافة مستمعي الأحداث للأزرار
+            const viewButton = row.querySelector('.view-investor');
+            const editButton = row.querySelector('.edit-investor');
+            const deleteButton = row.querySelector('.delete-investor');
+            
+            if (viewButton) {
+                viewButton.addEventListener('click', () => {
+                    showInvestorDetails(investor.id);
+                });
+            
+            profitBreakdown += `
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>إجمالي الربح</strong></td>
+                            <td><strong>${formatCurrency(totalProfit, true)}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            `;
+            
+            profitDetails.innerHTML = profitBreakdown;
+        } else {
+            profitDetails.innerHTML = '<p>لم يتم العثور على بيانات المستثمر</p>';
+        }
+    
+    
     // تحديث دالة showInvestorBalance
     window.originalShowInvestorBalance = window.showInvestorBalance;
     window.showInvestorBalance = function() {
@@ -245,9 +280,7 @@ function applyFormatCurrencyEverywhere() {
             return;
         }
         
-        const totalInvestment = investor.amount || typeof getTotalInvestmentForInvestor === 'function' ? 
-            getTotalInvestmentForInvestor(investorId) : 0;
-            
+        const totalInvestment = investor.amount || getTotalInvestmentForInvestor(investorId);
         balanceInfo.innerHTML = `
             <label class="form-label">الرصيد المتاح</label>
             <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 1rem;">
@@ -389,12 +422,9 @@ function applyFormatCurrencyEverywhere() {
             const row = document.createElement('tr');
             
             // حساب الربح الشهري
-            let monthlyProfit = 0;
-            if (investor.investments && Array.isArray(investor.investments)) {
-                monthlyProfit = investor.investments.reduce((total, inv) => {
-                    return total + calculateInterest(inv.amount, inv.date);
-                }, 0);
-            }
+            const monthlyProfit = investor.investments.reduce((total, inv) => {
+                return total + calculateInterest(inv.amount, inv.date);
+            }, 0);
             
             // تنسيق تاريخ الانضمام
             const joinDate = investor.joinDate || investor.createdAt || '';
@@ -429,19 +459,7 @@ function applyFormatCurrencyEverywhere() {
                     </div>
                 </td>
             `;
-            
-            tableBody.appendChild(row);
-            
-            // إضافة مستمعي الأحداث للأزرار
-            const viewButton = row.querySelector('.view-investor');
-            const editButton = row.querySelector('.edit-investor');
-            const deleteButton = row.querySelector('.delete-investor');
-            
-            if (viewButton) {
-                viewButton.addEventListener('click', () => {
-                    showInvestorDetails(investor.id);
-                });
-            }
+        });
             
             if (editButton) {
                 editButton.addEventListener('click', () => {
@@ -454,8 +472,14 @@ function applyFormatCurrencyEverywhere() {
                     deleteInvestor(investor.id);
                 });
             }
-        });
-    };
+        }
+        
+        if (sortedInvestors.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="8" class="text-center">لا يوجد مستثمرين</td>';
+            tableBody.appendChild(emptyRow);
+        }
+    
     
     // تحديث دالة renderTransactionsTable
     window.originalRenderTransactionsTable = window.renderTransactionsTable;
@@ -681,16 +705,13 @@ function applyFormatCurrencyEverywhere() {
                     statusClass = 'info';
                     break;
             }
-
-            const daysAgo = Math.floor((new Date() - new Date(tr.date)) / (1000 * 60 * 60 * 24));
-            const daysText = daysAgo === 0 ? 'اليوم' : `${daysAgo} يومًا مضت`;
-
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${tr.id}</td>
                 <td>${tr.investorName}</td>
                 <td>${tr.type}</td>
-                <td>${tr.date}<br><small>${daysText}</small></td>
+                <td>${tr.date}</td>
                 <td>${formatCurrency(tr.amount)}</td>
                 <td><span class="status status-${statusClass}">مكتمل</span></td>
                 <td>
@@ -970,16 +991,10 @@ function applyFormatCurrencyEverywhere() {
                         <tbody>
             `;
             
-            // معالجة الاستثمارات النشطة
             investor.investments.forEach(inv => {
-                // تجاهل الاستثمارات ذات المبلغ الصفري
-                if (inv.amount <= 0) return;
-                
                 const start = new Date(inv.date);
                 const today = new Date();
                 const days = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
-                
-                // حساب الربح للاستثمارات النشطة فقط
                 const profit = calculateInterest(inv.amount, inv.date, today.toISOString().split('T')[0]);
                 
                 totalProfit += profit;
@@ -992,40 +1007,6 @@ function applyFormatCurrencyEverywhere() {
                     </tr>
                 `;
             });
-        
-            profitBreakdown += `
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3"><strong>إجمالي الربح</strong></td>
-                            <td><strong>${formatCurrency(totalProfit, true)}</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-            `;
-            
-            profitDetails.innerHTML = profitBreakdown;
-        } else {
-            profitDetails.innerHTML = '<p>لم يتم العثور على بيانات المستثمر</p>';
-        }
-    };
-}
 
-/**
- * تفعيل تنسيق المبالغ المالية عند تحميل الصفحة
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // إضافة دالة تنسيق المبالغ للنافذة لاستخدامها في جميع أنحاء التطبيق
-    window.formatCurrency = formatCurrency;
-    
-    // تطبيق التنسيق الجديد على جميع المبالغ في التطبيق
-    setTimeout(function() {
-        try {
-            applyFormatCurrencyEverywhere();
-            console.log('تم تطبيق تنسيق المبالغ المالية');
-        } catch (e) {
-            console.error('خطأ في تطبيق تنسيق المبالغ المالية:', e);
         }
-    }, 500);
-});
+        }

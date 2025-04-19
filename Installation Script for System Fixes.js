@@ -19,25 +19,10 @@ document.addEventListener('DOMContentLoaded', function() {
     fixCurrencyFormatter();
     
     // 4. تهيئة نظام التنبيهات بعد التأكد من الإصلاحات
-   
+    setTimeout(initializeNotificationSystem, 500);
     
     console.log('تم تكامل نظام التنبيهات بنجاح!');
 });
-
-// تعديل السطر 22 في ملف Installation Script for System Fixes.js
-// من:
-
-// إلى:
-setTimeout(function() {
-    if (typeof window.notificationsSystem !== 'undefined' && 
-        typeof window.notificationsSystem.init === 'function') {
-        window.notificationsSystem.init();
-    } else if (typeof initNotificationsSystem === 'function') {
-        initNotificationsSystem();
-    } else {
-        console.log('تعذر تهيئة نظام التنبيهات: الدالة غير موجودة');
-    }
-}, 500);
 
 /**
  * إصلاح نظام التنبيهات
